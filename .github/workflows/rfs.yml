@@ -1,4 +1,4 @@
-name: Update RFS fire data
+name: Update fire data
 on:
   schedule:
     - cron: "*/30 * * * *"
@@ -18,12 +18,15 @@ jobs:
           python-version: "3.12"
       - name: Fetch RFS feeds
         run: python scripts/rfs.py
+      - name: Fetch national fire feeds
+        run: python scripts/fires.py
+        continue-on-error: true
       - name: Save if changed
         run: |
           if [ -n "$(git status --porcelain data)" ]; then
             git config user.name "ozskies-bot"
             git config user.email "ozskies-bot@users.noreply.github.com"
-            git add data/rfs.json
+            git add data/
             git commit -m "Update RFS fire data"
             git push
           fi
