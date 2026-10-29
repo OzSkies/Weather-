@@ -82,8 +82,24 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .hour .v{font-weight:700}
 .hour .r{font-size:12px;color:var(--cool);min-height:1.2em}
 .days{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 14px}
-.day{display:grid;grid-template-columns:52px 28px 40px 1fr 44px 36px;align-items:center;gap:8px;padding:11px 0;border-top:1px solid var(--line)}
-.day:first-child{border-top:0}
+.day,.day-head{display:grid;grid-template-columns:minmax(78px,1.1fr) 28px 34px minmax(60px,2fr) 36px 64px;align-items:center;gap:8px}
+.day{padding:11px 0;cursor:pointer;list-style:none}
+.day::-webkit-details-marker{display:none}
+.day-head{padding:8px 0 4px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line)}
+.day-head .r{text-align:right}
+.dayd{border-top:1px solid var(--line)}
+.day-head + .dayd{border-top:0}
+.dayd[open] .day{background:color-mix(in srgb,var(--cool) 6%,transparent)}
+.d .dn{display:block}
+.d .dc{display:block;font-weight:400;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.days-hint{margin:-4px 0 8px;color:var(--muted);font-size:14px}
+.dmore{padding:4px 2px 14px}
+.dmore dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.dmore dl div{display:flex;flex-direction:column}
+.dmore dt{font-size:12px;color:var(--muted)}
+.dmore dd{margin:0;font-size:15px}
+.dnote{margin:10px 0 0;font-size:12px;color:var(--muted)}
+@media (max-width:480px){.dmore dl{grid-template-columns:1fr}}
 .day .d{font-weight:700;white-space:nowrap}
 .conf{display:inline-block;width:9px;height:9px;border-radius:50%;margin-left:5px;vertical-align:1px;border:2px solid var(--muted)}
 .conf-high{background:var(--cool);border-color:var(--cool)}
@@ -96,7 +112,9 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .day svg{width:26px;height:26px}
 .day .lo{color:var(--muted);text-align:right}
 .day .hi{font-weight:700}
-.day .rain{font-size:13px;color:var(--cool);text-align:right}
+.day .rain{color:var(--cool);text-align:right;display:flex;flex-direction:column;line-height:1.15}
+.day .rain b{font-size:15px}
+.day .rain small{font-size:11px;color:var(--muted)}
 .track{height:6px;border-radius:6px;background:var(--line);position:relative}
 .bar{position:absolute;top:0;bottom:0;border-radius:6px}
 .meta{margin-top:18px;color:var(--muted);font-size:14px}
@@ -292,6 +310,40 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     return h+'</div><p class="near-note">'+(RV.map?'Tap a radar to switch the live map to it. The circle shows its 128 km range.':'Opens the Bureau of Meteorology’s live 128 km radar loop.')+'</p></div>';
   }
 
+
+  // ---------- 7-day details ----------
+  var EXTRA={}, DAYOPEN={};
+  var DAILYX='precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,uv_index_max,sunrise,sunset,apparent_temperature_max';
+  function parseExtra(dl){
+    var out=[]; if(!dl||!dl.time) return out;
+    for(var i=0;i<dl.time.length;i++) out.push({mm:dl.precipitation_sum?dl.precipitation_sum[i]:null,pop:dl.precipitation_probability_max?dl.precipitation_probability_max[i]:null,
+      wind:dl.wind_speed_10m_max?dl.wind_speed_10m_max[i]:null,gust:dl.wind_gusts_10m_max?dl.wind_gusts_10m_max[i]:null,wdir:dl.wind_direction_10m_dominant?dl.wind_direction_10m_dominant[i]:null,
+      uv:dl.uv_index_max?dl.uv_index_max[i]:null,rise:dl.sunrise?dl.sunrise[i]:null,set:dl.sunset?dl.sunset[i]:null,feels:dl.apparent_temperature_max?dl.apparent_temperature_max[i]:null});
+    return out;
+  }
+  function loadExtra(c){
+    if(!window.fetch||!c||c.lat==null) return; var e=EXTRA[c.id]; if(e&&(e.loading||Date.now()-e.at<60*60000)) return;
+    EXTRA[c.id]={loading:true,at:Date.now(),d:e&&e.d};
+    fetch('https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon+'&daily='+DAILYX+'&timezone=auto&timeformat=unixtime&forecast_days=7')
+      .then(function(r){return r.json();}).then(function(d){ EXTRA[c.id]={at:Date.now(),d:parseExtra(d.daily)}; if(current&&current.id===c.id) renderCity(current); })
+      .catch(function(){ EXTRA[c.id]={at:Date.now(),d:null}; });
+  }
+  function uvWord(u){ return u<3?'Low':u<6?'Moderate':u<8?'High':u<11?'Very high':'Extreme'; }
+  function tm(u){ return new Date(u*1000).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}); }
+  function dayDetail(d,x,c){
+    var rows=[];
+    rows.push(['Conditions',esc(d.condition||'–')]);
+    rows.push(['Chance of rain',d.rain!=null?n(d.rain)+'% chance of any rain':'–']);
+    if(x&&x.mm!=null) rows.push(['Expected rain',x.mm<0.5?'Little or none':(x.mm<1?'Under 1 mm':'About '+Math.round(x.mm)+' mm')]);
+    rows.push(['Temperature',n(d.low)+'° overnight, up to '+n(d.high)+'°'+(x&&x.feels!=null?' (feels like '+n(x.feels)+'°)':'')]);
+    if(x&&x.wind!=null) rows.push(['Wind','Up to '+Math.round(x.wind)+' km/h'+(x.wdir!=null?' from the '+dir(x.wdir):'')+(x.gust!=null?', gusts '+Math.round(x.gust)+' km/h':'')]);
+    if(x&&x.uv!=null) rows.push(['UV',uvWord(x.uv)+' ('+Math.round(x.uv)+')'+(x.uv>=3?', sun protection needed':'')]);
+    if(x&&x.rise) rows.push(['Sun','Rises '+tm(x.rise)+', sets '+tm(x.set)]);
+    var note=c.live?'':(x?'Temperatures and rain chance from '+esc(c.source||'the official forecast')+'. Rain amount, wind, UV and sun times from the live weather model.':'Loading extra detail…');
+    return '<dl>'+rows.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+r[1]+'</dd></div>';}).join('')+'</dl>'+(note?'<p class="dnote">'+note+'</p>':'');
+  }
+  main.addEventListener('toggle',function(e){ var t=e.target; if(t&&t.classList&&t.classList.contains('dayd')){ var k=t.getAttribute('data-k'); if(t.open) DAYOPEN[k]=1; else delete DAYOPEN[k]; } },true);
+
   function renderNav(){
     nav.innerHTML='';
     cities.forEach(function(c){
@@ -338,14 +390,21 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     var days=c.days||[];
     if(days.length){
       var lo=Math.min.apply(null,days.map(function(d){return +d.low;})), hi=Math.max.apply(null,days.map(function(d){return +d.high;}));
-      h+='<div class="section" id="sec-week"><h2>'+days.length+'-day forecast</h2><div class="days">';
-      days.forEach(function(d){
-        var span=hi-lo||1, l=(d.low-lo)/span*100, w=Math.max((d.high-d.low)/span*100,4);
-        h+='<div class="day"><span class="d" title="'+esc(d.conf?('Forecast agreement: '+d.conf):'')+'">'+esc(d.day)+(d.conf?'<i class="conf conf-'+esc(d.conf)+'"></i>':'')+'</span>'+icon(d.icon)
+      var X=c.live?c.extra:(EXTRA[c.id]&&EXTRA[c.id].d), hasConf=days.some(function(d){return d.conf;});
+      if(!c.live) loadExtra(c);
+      h+='<div class="section" id="sec-week"><h2>'+days.length+'-day forecast</h2><p class="days-hint">Tap a day for rain amount, wind, UV and sunrise times.</p><div class="days">'
+        +'<div class="day-head"><span>Day</span><span></span><span class="r">Low</span><span></span><span>High</span><span class="r">Chance of rain</span></div>';
+      days.forEach(function(d,i){
+        var span=hi-lo||1, l=(d.low-lo)/span*100, w=Math.max((d.high-d.low)/span*100,4), x=X&&X[i], key=c.id+'|'+d.day;
+        var mm=x&&x.mm!=null?x.mm:null;
+        h+='<details class="dayd" data-k="'+esc(key)+'"'+(DAYOPEN[key]?' open':'')+'><summary class="day">'
+          +'<span class="d" title="'+esc(d.conf?('Forecast agreement: '+d.conf):'')+'"><span class="dn">'+esc(d.day)+(d.conf?'<i class="conf conf-'+esc(d.conf)+'"></i>':'')+'</span><small class="dc">'+esc((d.condition||'').split(',')[0])+'</small></span>'+icon(d.icon)
           +'<span class="lo">'+n(d.low)+'°</span><div class="track" title="'+esc(d.condition||'')+'"><div class="bar" style="left:'+l+'%;width:'+w+'%;background:linear-gradient(90deg,'+tempColor(d.low,lo,hi)+','+tempColor(d.high,lo,hi)+')"></div></div>'
-          +'<span class="hi">'+n(d.high)+'°</span><span class="rain">'+(d.rain?n(d.rain)+'%':'')+'</span></div>';
+          +'<span class="hi">'+n(d.high)+'°</span>'
+          +'<span class="rain"><b>'+(d.rain!=null?n(d.rain)+'%':'–')+'</b><small>'+(mm!=null&&mm>=0.5?(mm<1?'&lt;1':Math.round(mm))+' mm':'rain')+'</small></span>'
+          +'</summary><div class="dmore">'+dayDetail(d,x,c)+'</div></details>';
       });
-      h+='</div><div class="legend"><span><i class="conf conf-high"></i>Forecasts agree</span><span><i class="conf conf-medium"></i>Some disagreement</span><span><i class="conf conf-low"></i>Wide disagreement</span></div></div>';
+      h+='</div>'+(hasConf?'':'<!--')+'<div class="legend"><span><i class="conf conf-high"></i>Forecasts agree</span><span><i class="conf conf-medium"></i>Some disagreement</span><span><i class="conf conf-low"></i>Wide disagreement</span></div>'+(hasConf?'':'-->')+'</div>';
     }
     if(nearNote){ radarCenter(nearNote.lat,nearNote.lon); loadSurf(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); } else { radarCenter(c.lat,c.lon); loadSurf(c.lat,c.lon,c.name); }
     h+= nearNote ? radarHTML(nearNote.lat,nearNote.lon,nearNote.town) : radarHTML(c.lat,c.lon,c.name);
@@ -736,7 +795,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     var dl=d.daily, cu=d.current||{}, days=[];
     for(var i=0;i<dl.time.length;i++){
       var w=wmo(dl.weather_code[i]);
-      days.push({day:i===0?'Today':new Date(dl.time[i]+'T12:00').toLocaleDateString('en-AU',{weekday:'short'}),
+      days.push({day:i===0?'Today':new Date(dl.time[i]*1000+43200000).toLocaleDateString('en-AU',{weekday:'short'}),
         high:dl.temperature_2m_max[i],low:dl.temperature_2m_min[i],rain:dl.precipitation_probability_max?dl.precipitation_probability_max[i]:null,
         condition:w[0]+(dl.precipitation_sum&&dl.precipitation_sum[i]>=1?', '+Math.round(dl.precipitation_sum[i])+' mm':''),icon:w[1]});
     }
@@ -748,7 +807,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     return {id:'t-'+slug(tw[0]+' '+tw[1]),name:tw[0],region:FULL[tw[1]]||tw[1],lat:tw[2],lon:tw[3],live:true,units:'C',updatedAt:new Date().toISOString(),
       current:{humidity:cu.relative_humidity_2m,wind:cu.wind_speed_10m!=null?dir(cu.wind_direction_10m)+' '+Math.round(cu.wind_speed_10m)+' km/h':null,feels:cu.apparent_temperature},
       consensus:'Live computer-model forecast for this exact spot, refreshed every hour. It blends the Bureau of Meteorology’s ACCESS model with other global models. It isn’t checked by a forecaster, so it can differ a little from official Bureau forecasts.',
-      source:'Open-Meteo (Bureau of Meteorology ACCESS and other models)',summary:summary,warnings:[],days:days,
+      source:'Open-Meteo (Bureau of Meteorology ACCESS and other models)',extra:parseExtra(dl),summary:summary,warnings:[],days:days,
       today:{high:t.high,low:t.low,rain:t.rain,condition:t.condition,icon:t.icon}};
   }
   function openTown(tw,fallback,pinId){
@@ -759,7 +818,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     main.innerHTML='<div class="empty"><h1>Loading '+esc(tw[0])+'…</h1><p>Getting the live forecast for this exact spot.</p></div>';
     var url='https://api.open-meteo.com/v1/forecast?latitude='+tw[2]+'&longitude='+tw[3]
       +'&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m'
-      +'&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,uv_index_max'
+      +'&daily=weather_code,temperature_2m_max,temperature_2m_min,'+DAILYX+'&timeformat=unixtime'
       +'&timezone=auto&forecast_days=7';
     fetch(url).then(function(r){return r.json();}).then(function(d){
       if(!d||!d.daily||!d.daily.time){ fallback(); return; }
