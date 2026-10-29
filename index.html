@@ -134,15 +134,20 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .swell-chart .sv{font-size:12px;font-weight:700;fill:var(--ink)}
 .swell-chart .st{font-size:12px;fill:var(--muted)}
 @media (max-width:420px){.swell-top{flex-direction:column;align-items:flex-start}}
-#ocean-map{height:360px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6}
+#ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
+.oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
+.obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
+#ocean-map .leaflet-marker-pane{z-index:470}
+.oarrow svg{filter:drop-shadow(0 1px 1px rgba(0,0,0,.35));transition:transform .5s ease}
 .ocean-ctrl{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
 .seg{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
 .seg button{font:inherit;font-size:14px;border:0;background:transparent;color:var(--ink);border-radius:999px;padding:6px 14px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .oplay{font:inherit;font-weight:700;color:var(--bg);background:var(--cool);border:0;border-radius:10px;padding:7px 14px;cursor:pointer}
 #otime{width:100%;margin-top:10px;accent-color:var(--cool)}
-.ocean-foot{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:14px}
-.lg{display:inline-block;width:70px;height:8px;border-radius:4px;vertical-align:middle;margin-right:6px;background:linear-gradient(90deg,hsl(210,85%,48%),hsl(105,85%,45%),hsl(0,85%,42%))}
+.ocean-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;color:var(--muted);font-size:14px;margin-top:4px}
+#olegend{display:flex;align-items:center;gap:6px}
+.lg{display:inline-block;width:90px;height:8px;border-radius:4px;background:linear-gradient(90deg,hsl(200,90%,55%),hsl(100,90%,51%),hsl(40,90%,49%),hsl(0,90%,47%))}
 .oarrow{background:none;border:0}
 #ocean-wrap{scroll-margin-top:64px}
 .surf-days,.tides{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 14px;margin-top:10px}
@@ -226,12 +231,12 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       <h2 style="margin-top:18px">Ocean map</h2>
       <div class="ocean-ctrl">
         <div class="seg" role="group" aria-label="Show on map"><button type="button" data-m="swell" aria-pressed="true">Swell</button><button type="button" data-m="current" aria-pressed="false">Current</button></div>
-        <button type="button" id="oplay" class="oplay">Play</button>
+        <button type="button" id="oplay" class="oplay">▶ Play</button>
       </div>
       <div id="ocean-map" role="img" aria-label="Map of sea depth with arrows showing water movement"></div>
       <input type="range" id="otime" min="0" max="47" value="0" aria-label="Forecast time">
       <div class="ocean-foot"><span id="olabel"></span><span id="olegend"></span></div>
-      <p class="near-note">Darker blue water is deeper. Arrows point the way the water is moving; bigger and warmer-coloured arrows mean bigger swell or a faster current. Slide or press Play to see the next 48 hours. Depth map © Esri, GEBCO, NOAA.</p>
+      <p class="near-note">Darker blue water is deeper. The flowing streaks and arrows show which way the water is moving: blue is gentle, green moderate, orange to red big swell or a strong current. Tap an arrow for details, and slide or press Play to step through the next 48 hours. Depth map © Esri, GEBCO, NOAA.</p>
     </div>
     <p class="near-note">Surf and tide data (tides are shown at the top with the forecast) from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> marine forecasts, updated every 30 minutes. Wave models are less precise right at the shore, and tide times can be out by up to half an hour. For boating, check official Bureau of Meteorology tide tables.</p>
   </section>
@@ -551,70 +556,117 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 
 
   // ---------- Ocean map ----------
-  var OM={map:null,layer:null,pts:[],times:[],st:0,t:0,mode:'swell',timer:null,key:'',cache:{}};
-  function ramp(v,max){ var p=Math.max(0,Math.min(1,v/max)); var hue=210-p*210; return 'hsl('+hue.toFixed(0)+',85%,'+(48-p*6).toFixed(0)+'%)'; }
+  var OM={map:null,layer:null,pts:[],times:[],st:0,t:0,mode:'swell',timer:null,key:'',cache:{},cv:null,ctx:null,parts:[],grid:null,raf:null};
+  function ramp(v,max){ var p=Math.max(0,Math.min(1,v/max)); return 'hsl('+(200-p*200).toFixed(0)+',90%,'+(55-p*8).toFixed(0)+'%)'; }
+  function vecAt(p,idx){
+    var cur=OM.mode==='current', v=cur?p.h.ocean_current_velocity[idx]:p.h.swell_wave_height[idx], d=cur?p.h.ocean_current_direction[idx]:p.h.swell_wave_direction[idx];
+    if(v==null||d==null) return null; var to=cur?d:(d+180)%360, r=to*Math.PI/180; return {u:Math.sin(r),v:Math.cos(r),m:v,to:to};
+  }
+  function buildGrid(){
+    if(!OM.map||!OM.cv) return; var sz=OM.map.getSize(), cell=14, cols=Math.ceil(sz.x/cell), rows=Math.ceil(sz.y/cell), idx=OM.st+OM.t, g=new Array(cols*rows);
+    var vs=OM.pts.map(function(p){ return {p:p,v:vecAt(p,idx)}; }).filter(function(o){return o.v;});
+    for(var r=0;r<rows;r++) for(var c=0;c<cols;c++){
+      var ll=OM.map.containerPointToLatLng([c*cell+cell/2,r*cell+cell/2]), su=0,sv=0,sm=0,sw=0,near=1e9;
+      for(var k=0;k<vs.length;k++){ var dy=ll.lat-vs[k].p.lat, dx=(ll.lng-vs[k].p.lon)*Math.cos(ll.lat*Math.PI/180), d2=dx*dx+dy*dy; if(d2<near) near=d2;
+        if(d2>0.04) continue; var w=1/(d2+1e-5); su+=vs[k].v.u*w; sv+=vs[k].v.v*w; sm+=vs[k].v.m*w; sw+=w; }
+      g[r*cols+c]=(sw&&near<0.0064)?{u:su/sw,v:sv/sw,m:sm/sw}:null;
+    }
+    OM.grid={g:g,cols:cols,rows:rows,cell:cell};
+  }
+  function sample(x,y){ var G=OM.grid; if(!G) return null; var c=Math.floor(x/G.cell), r=Math.floor(y/G.cell); if(c<0||r<0||c>=G.cols||r>=G.rows) return null; return G.g[r*G.cols+c]; }
+  function spawn(p){ var sz=OM.map.getSize(); for(var i=0;i<20;i++){ p.x=Math.random()*sz.x; p.y=Math.random()*sz.y; if(sample(p.x,p.y)) break; } p.age=Math.floor(Math.random()*80); return p; }
+  function resizeCanvas(){
+    if(!OM.cv) return; var sz=OM.map.getSize(), dpr=window.devicePixelRatio||1;
+    OM.cv.width=sz.x*dpr; OM.cv.height=sz.y*dpr; OM.cv.style.width=sz.x+'px'; OM.cv.style.height=sz.y+'px'; OM.ctx.setTransform(dpr,0,0,dpr,0,0);
+    buildGrid(); OM.parts=[]; var n=Math.min(1400,Math.round(sz.x*sz.y/260)); for(var i=0;i<n;i++) OM.parts.push(spawn({}));
+  }
+  function frame(){
+    OM.raf=requestAnimationFrame(frame);
+    if(!OM.ctx||!OM.grid||document.hidden) return;
+    var ctx=OM.ctx, sz=OM.map.getSize(), cur=OM.mode==='current', max=3;
+    ctx.globalCompositeOperation='destination-in'; ctx.fillStyle='rgba(0,0,0,0.9)'; ctx.fillRect(0,0,sz.x,sz.y);
+    ctx.globalCompositeOperation='source-over'; ctx.lineWidth=1.6; ctx.lineCap='round';
+    for(var i=0;i<OM.parts.length;i++){
+      var p=OM.parts[i], f=sample(p.x,p.y);
+      if(!f||p.age++>90){ spawn(p); continue; }
+      var sp=0.5+Math.min(f.m,max)/max*(cur?2.2:1.8), nx=p.x+f.u*sp, ny=p.y-f.v*sp;
+      ctx.strokeStyle=ramp(f.m,max); ctx.globalAlpha=0.85; ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(nx,ny); ctx.stroke();
+      p.x=nx; p.y=ny;
+    }
+    ctx.globalAlpha=1;
+  }
   function oceanDraw(){
     if(!OM.map||!OM.layer) return;
     OM.layer.clearLayers(); var idx=OM.st+OM.t, cur=OM.mode==='current', n=0;
-    OM.pts.forEach(function(p){
-      var v=cur?p.h.ocean_current_velocity[idx]:p.h.swell_wave_height[idx], d=cur?p.h.ocean_current_direction[idx]:p.h.swell_wave_direction[idx];
-      if(v==null||d==null) return; n++;
-      var to=cur?d:(d+180)%360, max=cur?3:3, sz=Math.round(18+Math.min(v,max)/max*18), col=ramp(v,max);
-      var html='<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" style="transform:rotate('+to+'deg)"><path d="M12 2 L19 12 L14 11 L14 22 L10 22 L10 11 L5 12 Z" fill="'+col+'" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/></svg>';
-      L.marker([p.lat,p.lon],{icon:L.divIcon({className:'oarrow',html:html,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]}),interactive:true,keyboard:false})
-        .bindTooltip((cur?'Current '+(Math.round(v*10)/10)+' km/h toward '+dir(to):'Swell '+f1(v)+' m heading '+dir(to)+(p.h.swell_wave_period&&p.h.swell_wave_period[idx]!=null?', '+Math.round(p.h.swell_wave_period[idx])+' s':'')))
+    OM.pts.forEach(function(p,k){
+      var vec=vecAt(p,idx); if(!vec) return; n++;
+      var sz=Math.round(14+Math.min(vec.m,3)/3*14), col=ramp(vec.m,3);
+      var html='<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" style="transform:rotate('+vec.to+'deg)"><path d="M12 1.5 L19.5 12.5 L14.2 11.6 L14.2 22.5 L9.8 22.5 L9.8 11.6 L4.5 12.5 Z" fill="'+col+'" stroke="rgba(10,25,40,.55)" stroke-width="1" stroke-linejoin="round"/></svg>';
+      L.marker([p.lat,p.lon],{icon:L.divIcon({className:'oarrow',html:html,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]}),keyboard:false})
+        .bindTooltip(cur?'Current '+(Math.round(vec.m*10)/10)+' km/h toward '+dir(vec.to):'Swell '+f1(vec.m)+' m heading '+dir(vec.to)+(p.h.swell_wave_period&&p.h.swell_wave_period[idx]!=null?', every '+Math.round(p.h.swell_wave_period[idx])+' s':''))
         .addTo(OM.layer);
     });
-    var t=OM.times[idx]; if(t){ var d=new Date(t);
-      document.getElementById('olabel').textContent=(OM.t===0?'Now':d.toLocaleDateString('en-AU',{weekday:'short'})+' '+d.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}))+(n?'':' · no data for this area'); }
-    document.getElementById('olegend').innerHTML=cur?'<i class="lg"></i> 0 → 3+ km/h':'<i class="lg"></i> 0 → 3+ m';
+    var t=OM.times[idx];
+    if(t){ var d=new Date(t*1000), lab=(OM.t===0?'Now':d.toLocaleDateString('en-AU',{weekday:'short'})+' '+d.toLocaleTimeString('en-AU',{hour:'numeric'}));
+      document.getElementById('olabel').textContent=lab+(n?'':' · no data for this area');
+      var bd=document.getElementById('obadge'); if(bd) bd.textContent=lab+' · '+(cur?'Current':'Swell'); }
+    document.getElementById('olegend').innerHTML='<span>'+(cur?'0':'0 m')+'</span><i class="lg"></i><span>'+(cur?'3+ km/h':'3+ m')+'</span>';
+    buildGrid();
   }
   function oceanLoad(lat,lon){
     var wrap=document.getElementById('ocean-wrap');
     if(!window.L||!window.fetch||lat==null){ wrap.hidden=true; return; }
     var key=lat.toFixed(2)+','+lon.toFixed(2);
     function ready(data){
-      OM.pts=data.pts; OM.times=data.times; OM.st=data.st; OM.t=0; document.getElementById('otime').value=0;
-      document.getElementById('otime').max=Math.max(0,Math.min(47,OM.times.length-OM.st-1));
+      OM.pts=data.pts; OM.times=data.times; OM.st=data.st; OM.t=0;
+      var sl=document.getElementById('otime'); sl.max=Math.max(1,Math.min(47,OM.times.length-OM.st-1)); sl.value=0;
       wrap.hidden=false;
       if(!OM.map){
-        OM.map=L.map('ocean-map',{scrollWheelZoom:false,minZoom:6,maxZoom:12}).setView([lat,lon],9);
+        OM.map=L.map('ocean-map',{scrollWheelZoom:false,minZoom:6,maxZoom:12,zoomSnap:0.5}).setView([lat,lon],9);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:13,attribution:'© Esri, GEBCO, NOAA'}).addTo(OM.map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:13}).addTo(OM.map);
+        OM.cv=document.createElement('canvas'); OM.cv.className='oflow'; OM.map.getContainer().appendChild(OM.cv); OM.ctx=OM.cv.getContext('2d');
+        var bd=document.createElement('div'); bd.id='obadge'; bd.className='obadge'; OM.map.getContainer().appendChild(bd);
         OM.layer=L.layerGroup().addTo(OM.map);
         OM.pin=L.circleMarker([lat,lon],{radius:7,color:'#fff',weight:2,fillColor:'#D2553A',fillOpacity:1}).addTo(OM.map);
-      } else { OM.map.setView([lat,lon],9); OM.pin.setLatLng([lat,lon]); setTimeout(function(){OM.map.invalidateSize();},50); }
-      oceanDraw(); if(window.updateJump) window.updateJump();
+        OM.map.on('movestart zoomstart',function(){ if(OM.ctx){ var z=OM.map.getSize(); OM.ctx.clearRect(0,0,z.x,z.y); } OM.grid=null; });
+        OM.map.on('moveend zoomend resize',function(){ resizeCanvas(); });
+        frame();
+      } else { OM.map.setView([lat,lon],9); OM.pin.setLatLng([lat,lon]); }
+      setTimeout(function(){ OM.map.invalidateSize(); resizeCanvas(); oceanDraw(); },60);
+      if(window.updateJump) window.updateJump();
     }
-    if(OM.key===key && OM.cache[key] && Date.now()-OM.cache[key].at<30*60000){ if(wrap.hidden) ready(OM.cache[key]); return; }
+    if(OM.key===key && OM.cache[key] && Date.now()-OM.cache[key].at<30*60000){ ready(OM.cache[key]); return; }
     OM.key=key;
-    var la=[],lo=[],step=0.14;
-    for(var i=-3;i<=3;i++) for(var j=-3;j<=3;j++){ la.push((lat+i*step).toFixed(3)); lo.push((lon+j*step).toFixed(3)); }
+    var la=[],lo=[],step=0.07,n=6, cl=Math.cos(lat*Math.PI/180);
+    for(var i=-n;i<=n;i++) for(var j=-n;j<=n;j++){ la.push((lat+i*step).toFixed(3)); lo.push((lon+j*step/cl).toFixed(3)); }
     var url='https://marine-api.open-meteo.com/v1/marine?latitude='+la.join(',')+'&longitude='+lo.join(',')
-      +'&hourly=swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction&forecast_days=3&timezone=auto';
+      +'&hourly=swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction&forecast_days=3&timezone=auto&timeformat=unixtime';
     fetch(url).then(function(r){return r.json();}).then(function(d){
       var arr=Array.isArray(d)?d:[d], seen={}, pts=[];
       arr.forEach(function(o){ if(!o||!o.hourly) return; var k=(+o.latitude).toFixed(3)+','+(+o.longitude).toFixed(3); if(seen[k]) return; seen[k]=1;
         if(!o.hourly.swell_wave_height||o.hourly.swell_wave_height.every(function(v){return v==null;})) return;
         pts.push({lat:+o.latitude,lon:+o.longitude,h:o.hourly}); });
       if(!pts.length){ wrap.hidden=true; return; }
-      var times=pts[0].h.time, now=Date.now(), st=0; for(var i=0;i<times.length;i++){ if(new Date(times[i]).getTime()>=now-3600000){ st=i; break; } }
+      var times=pts[0].h.time, now=Date.now()/1000, st=0; for(var i=0;i<times.length;i++){ if(times[i]>=now-3600){ st=i; break; } }
       var data={pts:pts,times:times,st:st,at:Date.now()}; OM.cache[key]=data; if(OM.key===key) ready(data);
     }).catch(function(){ wrap.hidden=true; });
   }
   (function(){
-    document.getElementById('otime').addEventListener('input',function(){ OM.t=+this.value; oceanDraw(); });
+    var sl=document.getElementById('otime');
+    sl.addEventListener('input',function(){ OM.t=+this.value; oceanDraw(); });
     Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(b){
       b.onclick=function(){ OM.mode=b.getAttribute('data-m');
-        Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(x){x.setAttribute('aria-pressed',x===b?'true':'false');}); oceanDraw(); };
+        Array.prototype.forEach.call(document.querySelectorAll('.seg button'),function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+        oceanDraw(); if(OM.ctx){ var z=OM.map.getSize(); OM.ctx.clearRect(0,0,z.x,z.y); } };
     });
-    document.getElementById('oplay').onclick=function(){
-      var btn=this; if(OM.timer){ clearInterval(OM.timer); OM.timer=null; btn.textContent='Play'; return; }
-      btn.textContent='Pause'; var max=+document.getElementById('otime').max;
-      OM.timer=setInterval(function(){ OM.t=OM.t>=max?0:OM.t+1; document.getElementById('otime').value=OM.t; oceanDraw(); },500);
-    };
+    var pb=document.getElementById('oplay');
+    pb.addEventListener('click',function(){
+      if(OM.timer){ clearInterval(OM.timer); OM.timer=null; pb.textContent='▶ Play'; return; }
+      pb.textContent='❚❚ Pause';
+      OM.timer=setInterval(function(){ var max=+sl.max||47; OM.t=OM.t+3>max?0:OM.t+3; sl.value=OM.t; oceanDraw(); },900);
+    });
   })();
-
   function renderSurf(d){
     var sec=document.getElementById('surf'), body=document.getElementById('surf-body');
     document.getElementById('surf-title').textContent='Surf near '+SURF.name;
