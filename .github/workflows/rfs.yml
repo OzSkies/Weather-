@@ -1,0 +1,29 @@
+name: Update RFS fire data
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: rfs
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch RFS feeds
+        run: python scripts/rfs.py
+      - name: Save if changed
+        run: |
+          if [ -n "$(git status --porcelain data)" ]; then
+            git config user.name "ozskies-bot"
+            git config user.email "ozskies-bot@users.noreply.github.com"
+            git add data/rfs.json
+            git commit -m "Update RFS fire data"
+            git push
+          fi
