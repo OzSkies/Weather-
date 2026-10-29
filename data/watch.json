@@ -1,0 +1,170 @@
+[
+ {
+  "id": "sydney",
+  "name": "Sydney",
+  "state": "NSW",
+  "lat": -33.86,
+  "lon": 151.257
+ },
+ {
+  "id": "melbourne",
+  "name": "Melbourne",
+  "state": "VIC",
+  "lat": -37.814,
+  "lon": 144.983
+ },
+ {
+  "id": "brisbane",
+  "name": "Brisbane",
+  "state": "QLD",
+  "lat": -27.468,
+  "lon": 153.022
+ },
+ {
+  "id": "perth",
+  "name": "Perth",
+  "state": "WA",
+  "lat": -31.949,
+  "lon": 115.86
+ },
+ {
+  "id": "adelaide",
+  "name": "Adelaide",
+  "state": "SA",
+  "lat": -34.928,
+  "lon": 138.601
+ },
+ {
+  "id": "darwin",
+  "name": "Darwin",
+  "state": "NT",
+  "lat": -12.459,
+  "lon": 130.837
+ },
+ {
+  "id": "canberra",
+  "name": "Canberra",
+  "state": "ACT",
+  "lat": -35.303,
+  "lon": 149.201
+ },
+ {
+  "id": "newcastle",
+  "name": "Newcastle",
+  "state": "NSW",
+  "lat": -32.932,
+  "lon": 151.778
+ },
+ {
+  "id": "cairns",
+  "name": "Cairns",
+  "state": "QLD",
+  "lat": -16.924,
+  "lon": 145.742
+ },
+ {
+  "id": "townsville",
+  "name": "Townsville",
+  "state": "QLD",
+  "lat": -19.228,
+  "lon": 146.765
+ },
+ {
+  "id": "alice-springs",
+  "name": "Alice Springs",
+  "state": "NT",
+  "lat": -23.702,
+  "lon": 133.863
+ },
+ {
+  "id": "launceston",
+  "name": "Launceston",
+  "state": "TAS",
+  "lat": -41.432,
+  "lon": 147.078
+ },
+ {
+  "id": "pottsville",
+  "name": "Pottsville",
+  "state": "NSW",
+  "lat": -28.392,
+  "lon": 153.542
+ },
+ {
+  "id": "tweed-heads",
+  "name": "Tweed Heads",
+  "state": "NSW",
+  "lat": -28.184,
+  "lon": 153.527
+ },
+ {
+  "id": "byron-bay",
+  "name": "Byron Bay",
+  "state": "NSW",
+  "lat": -28.661,
+  "lon": 153.593
+ },
+ {
+  "id": "port-macquarie",
+  "name": "Port Macquarie",
+  "state": "NSW",
+  "lat": -31.44,
+  "lon": 152.873
+ },
+ {
+  "id": "uki",
+  "name": "Uki",
+  "state": "NSW",
+  "lat": -28.381,
+  "lon": 153.316
+ },
+ {
+  "id": "yulara",
+  "name": "Yulara",
+  "state": "NT",
+  "lat": -25.245,
+  "lon": 130.986
+ },
+ {
+  "id": "kingscliff",
+  "name": "Kingscliff",
+  "state": "NSW",
+  "lat": -28.2547,
+  "lon": 153.5756
+ },
+ {
+  "id": "banora-point",
+  "name": "Banora Point",
+  "state": "NSW",
+  "lat": -28.2134,
+  "lon": 153.536
+ },
+ {
+  "id": "hobart",
+  "name": "Hobart",
+  "state": "TAS",
+  "lat": -42.8821,
+  "lon": 147.3272
+ },
+ {
+  "id": "bicheno",
+  "name": "Bicheno",
+  "state": "TAS",
+  "lat": -41.8748,
+  "lon": 148.3036
+ },
+ {
+  "id": "woodenbong",
+  "name": "Woodenbong",
+  "state": "NSW",
+  "lat": -28.3941,
+  "lon": 152.6185
+ },
+ {
+  "id": "stanthorpe",
+  "name": "Stanthorpe",
+  "state": "QLD",
+  "lat": -28.66,
+  "lon": 151.9376
+ }
+]
