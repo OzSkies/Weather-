@@ -257,6 +257,18 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .tr-seg{margin-top:2px}
 #traffic{scroll-margin-top:64px}
 @media (max-width:480px){.tr-frame{height:380px}}
+.fire-detail{background:var(--surface);border:1px solid var(--line);border-left-width:6px;border-radius:14px;padding:12px 14px;margin-top:10px}
+.fire-detail.sev0{border-left-color:#6B7785}.fire-detail.sev1{border-left-color:#E8C21C}.fire-detail.sev2{border-left-color:#E07B1E}.fire-detail.sev3{border-left-color:#C8322A}
+.fd-top{display:flex;gap:12px;align-items:flex-start}
+.fd-top > span:nth-child(2){flex:1}
+.fd-top b{display:block;font-size:17px}
+.fd-top small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.fd-x{font:inherit;font-size:16px;background:none;border:0;color:var(--muted);cursor:pointer;padding:2px 6px}
+.fire-detail dl{margin:10px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.fire-detail dt{font-size:12px;color:var(--muted)}
+.fire-detail dd{margin:0;font-size:15px}
+.fd-warn{margin:10px 0 0;font-size:14px}
+@media (max-width:480px){.fire-detail dl{grid-template-columns:1fr}}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -831,7 +843,7 @@ body{background:transparent}
       var inc=allInc.map(function(x){ return {x:x,d:km(c.lat,c.lon,x.lat,x.lon)}; }).filter(function(o){return o.d<=100;}).sort(function(a,b){ return lvlOf(b.x)-lvlOf(a.x)||a.d-b.d; }).slice(0,10);
       h+='<div class="al-h">Fire map</div><div class="seg rfs-seg" role="group" aria-label="Fire map area"><button type="button" data-r="near" aria-pressed="'+(RFS.view!=='all')+'">Near '+esc(c.name)+'</button><button type="button" data-r="all" aria-pressed="'+(RFS.view==='all')+'">All Australia</button></div>'
         +'<label class="hs-tog"><input type="checkbox" id="hs-tog"'+(RFS.hot!==false?' checked':'')+'> Satellite heat spots (last 24 hours)</label>'
-        +'<div id="rfs-map-slot"></div><div class="rfs-key"><span><i class="kd k3"></i>Emergency Warning</span><span><i class="kd k2"></i>Watch and Act</span><span><i class="kd k1"></i>Advice</span><span><i class="kd k0"></i>Other fire or burn</span><span><i class="kd khs"></i>Satellite heat spot</span><span>Bigger circles are bigger fires · tap a fire for details</span></div>';
+        +'<div id="rfs-map-slot"></div><div id="fire-detail" class="fire-detail" hidden></div><div class="rfs-key"><span><i class="kd k3"></i>Emergency Warning</span><span><i class="kd k2"></i>Watch and Act</span><span><i class="kd k1"></i>Advice</span><span><i class="kd k0"></i>Other fire or burn</span><span><i class="kd khs"></i>Satellite heat spot</span><span>Bigger circles are bigger fires · tap a fire for details</span></div>';
       h+='<div class="al-h">Fires and incidents within 100 km ('+inc.length+')</div>';
       if(inc.length){ inc.forEach(function(o){ h+=incHTML(o.x,o.d); }); }
       else h+='<div class="al-item sev0"><span class="al-ic">✅</span><span><b>No fire incidents within 100 km</b><small>Switch the map to All Australia to see fires elsewhere.</small></span></div>';
@@ -862,6 +874,19 @@ body{background:transparent}
       +'<button type="button" class="inc-map" data-lat="'+x.lat+'" data-lon="'+x.lon+'">Show on fire map</button></div></details>';
   }
   var FM={map:null,el:null,layer:null,pin:null};
+
+  function showFire(x,c){
+    var el=document.getElementById('fire-detail'); if(!el) return; var lv=lvlOf(x);
+    var lab=lv?x.category:(x.category&&!/not applicable|^incident$/i.test(x.category)?x.category:'No alert');
+    var rows=[['State',x.state],['Status',x.status],['Type',x.type],['Size',x.size],['Location',x.location],['Council area',x.council],['Responsible agency',x.agency],['Last updated',x.updated]].filter(function(r){return r[1];});
+    el.className='fire-detail sev'+lv;
+    el.innerHTML='<div class="fd-top"><span class="al-ic">🔥</span><span><b>'+esc(x.title)+'</b><small><span class="lvl lvl'+lv+'">'+esc(lab)+'</span> '+Math.round(km(c.lat,c.lon,x.lat,x.lon))+' km from '+esc(c.name)+'</small></span><button type="button" class="fd-x" aria-label="Close">✕</button></div>'
+      +(rows.length?'<dl>'+rows.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd></div>';}).join('')+'</dl>':'')
+      +(lv>=2?'<p class="fd-warn">'+(lv===3?'<b>Emergency Warning:</b> you may be in danger and need to take action immediately. Follow the advice of emergency services.':'<b>Watch and Act:</b> conditions are changing. Start taking action now to protect yourself and your family.')+'</p>':'');
+    el.hidden=false; el.querySelector('.fd-x').onclick=function(){ el.hidden=true; };
+    el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
   function fireMap(c){
     var slot=document.getElementById('rfs-map-slot'); if(!slot||!window.L||!(RFS.data||FIRES.data)) return;
     if(!FM.el){ FM.el=document.createElement('div'); FM.el.id='rfs-map'; }
@@ -869,6 +894,7 @@ body{background:transparent}
     if(!FM.map){
       FM.map=L.map(FM.el,{scrollWheelZoom:false,minZoom:5,maxZoom:13});
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:13,attribution:'© OpenStreetMap · Fire data © state fire agencies, Geoscience Australia'}).addTo(FM.map);
+      FM.map.createPane('hotPane'); FM.map.getPane('hotPane').style.zIndex=350; FM.map.getPane('hotPane').style.pointerEvents='none';
       FM.hot=L.layerGroup().addTo(FM.map); FM.layer=L.layerGroup().addTo(FM.map);
       FM.pin=L.circleMarker([c.lat,c.lon],{radius:7,color:'#fff',weight:2,fillColor:'#1C2B36',fillOpacity:1}).addTo(FM.map).bindTooltip(c.name);
       FM.map.setView([c.lat,c.lon],8);
@@ -878,12 +904,12 @@ body{background:transparent}
     var col={0:'#6B7785',1:'#E8C21C',2:'#E07B1E',3:'#C8322A'}, pts=[];
     var ALL=(FIRES.data&&FIRES.data.incidents)||(RFS.data&&RFS.data.incidents)||[];
     ALL.slice().sort(function(a,b){return lvlOf(a)-lvlOf(b);}).forEach(function(x){
-      var lv=lvlOf(x), ha=parseFloat(String(x.size||'').replace(/[^0-9.]/g,''))||0, r=Math.min(22,6+Math.sqrt(ha)/4);
+      var lv=lvlOf(x), ha=parseFloat(String(x.size||'').replace(/[^0-9.]/g,''))||0, r=Math.min(24,9+Math.sqrt(ha)/4);
       var m=L.circleMarker([x.lat,x.lon],{radius:r,color:'#fff',weight:1.5,fillColor:col[lv],fillOpacity:.85}).addTo(FM.layer);
       m.bindPopup('<div class="fpop"><b>'+esc(x.title)+'</b><br><span class="lvl lvl'+lv+'">'+esc(lv?x.category:(x.category&&!/not applicable|^incident$/i.test(x.category)?x.category:'No alert'))+'</span><br>'
         +[['State',x.state],['Status',x.status],['Type',x.type],['Size',x.size],['Location',x.location],['Council',x.council],['Agency',x.agency],['Updated',x.updated]].filter(function(r){return r[1];}).map(function(r){return r[0]+': '+esc(r[1]);}).join('<br>')
         +'<br><small>'+Math.round(km(c.lat,c.lon,x.lat,x.lon))+' km from '+esc(c.name)+'</small></div>');
-      x._m=m; pts.push([x.lat,x.lon]);
+      m.on('click',function(){ showFire(x,c); }); x._m=m; pts.push([x.lat,x.lon]);
     });
     setTimeout(function(){ FM.map.invalidateSize();
       if(RFS.view==='all'){ FM.map.fitBounds([[-43.8,112.5],[-10.5,153.8]]); }
@@ -909,8 +935,8 @@ body{background:transparent}
   function drawHot(){
     if(!FM.map||!FM.hot) return; FM.hot.clearLayers();
     if(RFS.hot===false||!FIRES.data||!FIRES.data.hotspots) return;
-    if(!FM.cv) FM.cv=L.canvas({padding:.3});
-    FIRES.data.hotspots.forEach(function(p){ L.circleMarker([p[0],p[1]],{renderer:FM.cv,radius:2.6,stroke:false,fillColor:'#B3261E',fillOpacity:.75}).bindTooltip('Satellite heat spot'+(p[2]?' · '+p[2].replace('T',' ')+' UTC':'')).addTo(FM.hot); });
+    if(!FM.cv) FM.cv=L.canvas({padding:.3,pane:'hotPane'});
+    FIRES.data.hotspots.forEach(function(p){ L.circleMarker([p[0],p[1]],{renderer:FM.cv,pane:'hotPane',interactive:false,radius:2.6,stroke:false,fillColor:'#B3261E',fillOpacity:.75}).addTo(FM.hot); });
   }
 
   function loadRFS(c){
@@ -1476,7 +1502,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029113758';
+  var APPVER='20261029115530';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
