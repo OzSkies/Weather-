@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Weather</title>
+<title>OzSkies: weather, surf and tides</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
@@ -153,7 +153,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 </head>
 <body>
 <div class="wrap">
-  <div class="topbar"><span class="brand">Weather</span><button type="button" id="share" class="share-btn" aria-label="Share this weather site"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></div>
+  <div class="topbar"><span class="brand">OzSkies</span><button type="button" id="share" class="share-btn" aria-label="Share OzSkies"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></div>
   <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search any Australian town or suburb" autocomplete="off" aria-label="Search any Australian town or suburb"></div>
   <div class="results" id="results" hidden></div>
   <p class="coverage">Search covers <span id="count"></span> Australian places. Towns without their own forecast show the nearest one.</p>
@@ -515,7 +515,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 
   document.getElementById('share').onclick=function(){
     var btn=this, url=location.href, place=current?current.name:'';
-    var data={title:'Weather',text:place?('Weather, surf and tides for '+place):'Weather, surf and tides for anywhere in Australia',url:url};
+    var data={title:'OzSkies',text:place?('OzSkies: weather, surf and tides for '+place):'OzSkies: weather, surf and tides for anywhere in Australia',url:url};
     function done(msg){ var t=btn.innerHTML; btn.textContent=msg; setTimeout(function(){btn.innerHTML=t;},2000); }
     if(navigator.share){ navigator.share(data).catch(function(){}); return; }
     if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){done('Link copied');},function(){prompt('Copy this link:',url);}); return; }
