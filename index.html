@@ -362,15 +362,15 @@ body{background:transparent}
   <nav class="jump" id="jump" aria-label="Jump to section">
     <span class="jh">Jump to</span>
     <button type="button" data-t="sec-today">Today</button>
-    <button type="button" data-t="sec-alerts">Alerts</button>
-    <button type="button" data-t="sec-rfs">Fires</button>
     <button type="button" data-t="hero-tides">Tides</button>
+    <button type="button" data-t="radar-live">Live radar</button>
+    <button type="button" data-t="sec-alerts">Alerts</button>
     <button type="button" data-t="sec-week">7-day forecast</button>
+    <button type="button" data-t="sec-radars">Radar stations</button>
     <button type="button" data-t="surf">Surf</button>
     <button type="button" data-t="ocean-wrap">Ocean map</button>
     <button type="button" data-t="cams">Surf cams</button>
-    <button type="button" data-t="radar-live">Live radar</button>
-    <button type="button" data-t="sec-radars">Radar stations</button>
+    <button type="button" data-t="sec-rfs">Fires</button>
     <button type="button" data-t="top" class="totop">Back to top ↑</button>
   </nav>
   <aside class="side-places" aria-label="Saved places"><span class="jh">Places</span><div id="side-places"></div></aside>
@@ -397,6 +397,7 @@ body{background:transparent}
     <div id="cam-list" class="cam-list"></div>
     <p class="near-note">Free cams are Transport for NSW coastal bar cameras, aimed at river and harbour entrances rather than individual surf breaks. Swellnet and Surfline cams open on their own sites and may need a free login or subscription. <a href="https://www.swellnet.com/surfcams" target="_blank" rel="noopener">Browse all Swellnet cams ↗</a></p>
   </section>
+  <section class="section" id="sec-rfs"><h2 id="rfs-title">🔥 Bushfires and incidents</h2><div id="rfs-body"><p class="near-note">Loading fire information…</p></div></section>
   <section class="section" id="radar-live" hidden>
     <h2>Live rain radar</h2>
     <label class="radar-pick">Choose a radar
@@ -895,7 +896,9 @@ body{background:transparent}
 
   function loadRFS(c){
     if(!window.fetch||c.lat==null) return;
-    if(RFS.html&&RFS.key===alertKey(c)){ fireMap(c); var sel=document.getElementById('rfs-sel'); if(sel) sel.onchange=function(){ try{ if(sel.value) localStorage.setItem('ozskies-rfs-district',sel.value); else localStorage.removeItem('ozskies-rfs-district'); }catch(e){} lgaFor(c).then(function(l){ renderRFS(c,l); }); }; if(Date.now()-RFS.at<15*60000&&Date.now()-FIRES.at<15*60000) return; }
+    var tt=document.getElementById('rfs-title'); if(tt) tt.innerHTML=stateOf(c)==='NSW'?'<span class="rfs-logo">RFS</span> Fire danger and bushfires':'🔥 Bushfires and incidents';
+    if(RFS.key!==alertKey(c)){ var rb=document.getElementById('rfs-body'); if(rb&&!rb.querySelector('#rfs-map')) rb.innerHTML='<p class="near-note">Loading fire information…</p>'; }
+    if(RFS.html&&RFS.key===alertKey(c)){ var sel=document.getElementById('rfs-sel'); if(sel) sel.onchange=function(){ try{ if(sel.value) localStorage.setItem('ozskies-rfs-district',sel.value); else localStorage.removeItem('ozskies-rfs-district'); }catch(e){} lgaFor(c).then(function(l){ renderRFS(c,l); }); }; if(Date.now()-RFS.at<15*60000&&Date.now()-FIRES.at<15*60000) return; }
     Promise.all([fetchRFS(),stateOf(c)==='NSW'?lgaFor(c):Promise.resolve(''),fetchFires()]).then(function(r){ if(current&&alertKey(current)===alertKey(c)) renderRFS(c,r[1]); });
   }
 
@@ -942,7 +945,7 @@ body{background:transparent}
       +(c.consensus?'<div class="agree">'+esc(c.consensus)+'</div>':'')
       +'</section>';
     (c.warnings||[]).forEach(function(w){ h+='<div class="alert" role="alert"><strong>'+esc(w.title||'Weather warning')+'</strong>'+(w.detail?'<p>'+esc(w.detail)+'</p>':'')+'</div>'; });
-    h+='<div class="section" id="sec-rfs"><h2>'+(stateOf(c)==='NSW'?'<span class="rfs-logo">RFS</span> Fire danger and bushfires':'🔥 Bushfires and incidents')+'</h2><div id="rfs-body">'+(RFS.html&&RFS.key===alertKey(c)?RFS.html:'<p class="near-note">Loading official fire information…</p>')+'</div></div>';
+    h+='<div id="radar-slot"></div>';
     h+='<div class="section" id="sec-alerts"><h2>Alerts and warnings</h2><div id="alerts-body">'+(ALERTS.html&&ALERTS.key===alertKey(c)?ALERTS.html:'<p class="near-note">Checking for severe weather…</p>')+'</div></div>';
     if(c.summary) h+='<p class="section" style="margin-bottom:0">'+esc(c.summary)+'</p>';
     var days=c.days||[];
@@ -969,6 +972,7 @@ body{background:transparent}
     var a=ago(c.updatedAt), old=Date.now()-Date.parse(c.updatedAt)>6*3600000;
     h+='<p class="meta">'+(a?(old?'<span class="stale">Updated '+a+'.</span> Forecasts may be out of date.':'Updated '+a+'.'):'')+(c.source?' Combined from: '+esc(c.source)+'.':'')+'</p>';
     main.innerHTML=h;
+    (function(){ var rs=document.getElementById('radar-slot'), rl=document.getElementById('radar-live'); if(rs&&rl){ rs.appendChild(rl); if(RV.map) setTimeout(function(){ RV.map.invalidateSize(); },50); } })();
     setWx(wxFor(c));
     loadAlerts(c);
     loadRFS(c);
@@ -1427,7 +1431,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029100457';
+  var APPVER='20261029100753';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
