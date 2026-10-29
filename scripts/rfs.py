@@ -50,6 +50,8 @@ try:
             "lon": pt[0], "lat": pt[1],
             "status": field("STATUS"), "type": field("TYPE"), "size": field("SIZE"),
             "location": field("LOCATION"), "updated": field("UPDATED"),
+            "council": field("COUNCIL AREA"), "agency": field("RESPONSIBLE AGENCY"),
+            "fire": field("FIRE"), "summary": desc[:700],
         })
 except Exception as e:
     out["errors"].append("incidents: %s" % e)
