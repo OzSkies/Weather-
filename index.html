@@ -214,6 +214,37 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .lvl{display:inline-block;font-weight:700;font-size:11px;padding:2px 6px;border-radius:5px;margin-right:4px;color:#fff}
 .lvl1{background:#2F6FA3}.lvl2{background:#E07B1E}.lvl3{background:#C8322A}
 @media (max-width:420px){.fdr-row{grid-template-columns:1fr}}
+#rfs-map{height:380px;border-radius:20px;border:1px solid var(--line);overflow:hidden;margin-top:8px}
+.rfs-seg{margin-top:4px}
+.rfs-key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin:8px 2px 4px}
+.kd{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1.5px solid #fff}
+.k1{background:#2F6FA3}.k2{background:#E07B1E}.k3{background:#C8322A}
+.inc{background:var(--surface);border:1px solid var(--line);border-left-width:6px;border-radius:14px;margin-top:8px}
+.inc summary{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;cursor:pointer;list-style:none}
+.inc summary::-webkit-details-marker{display:none}
+.inc summary b{display:block;font-size:16px}
+.inc summary small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.inc summary > span:nth-child(2){flex:1}
+.inc-more{color:var(--cool);font-weight:700;font-size:14px;white-space:nowrap}
+.inc[open] .inc-more{opacity:.6}
+.inc-body{padding:0 14px 14px 48px}
+.inc-body dl{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:8px 16px}
+.inc-body dt{font-size:12px;color:var(--muted)}
+.inc-body dd{margin:0;font-size:15px}
+.inc-map{margin-top:10px;font:inherit;font-weight:700;font-size:14px;color:#fff;background:var(--cool);border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+.inc.sev1{border-left-color:#2F6FA3}.inc.sev2{border-left-color:#E07B1E}.inc.sev3{border-left-color:#C8322A}
+.rfs-all{margin-top:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 14px}
+.rfs-all summary{cursor:pointer;font-weight:700}
+.rfs-tbl{margin-top:8px}
+.rt-h,.rt-r{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.rt-h{border-top:0;font-size:12px;color:var(--muted)}
+.rt-r.mine{background:color-mix(in srgb,var(--cool) 10%,transparent);border-radius:8px;padding-left:6px}
+.rt-r small{color:var(--muted)}
+.chip{display:inline-block;font-style:normal;font-size:12px;font-weight:700;padding:3px 7px;border-radius:6px;margin:1px 4px 1px 0;border:1px solid rgba(0,0,0,.1)}
+.chip.tb{background:#AD0909;color:#fff}
+.fpop{font:14px/1.4 "Atkinson Hyperlegible",system-ui,sans-serif}
+.fpop .lvl{margin:3px 0}
+@media (max-width:480px){.inc-body{padding-left:14px}.inc-body dl{grid-template-columns:1fr}}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -447,7 +478,7 @@ body{background:transparent}
     var note=c.live?'':(x?'Temperatures and rain chance from '+esc(c.source||'the official forecast')+'. Rain amount, wind, UV and sun times from the live weather model.':'Loading extra detail…');
     return '<dl>'+rows.map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+r[1]+'</dd></div>';}).join('')+'</dl>'+(note?'<p class="dnote">'+note+'</p>':'');
   }
-  main.addEventListener('toggle',function(e){ var t=e.target; if(t&&t.classList&&t.classList.contains('dayd')){ var k=t.getAttribute('data-k'); if(t.open) DAYOPEN[k]=1; else delete DAYOPEN[k]; } },true);
+  main.addEventListener('toggle',function(e){ var t=e.target; if(t&&t.classList&&t.classList.contains('inc')){ var s0=t.querySelector('b'); if(s0){ if(t.open) DAYOPEN['inc|'+s0.textContent]=1; else delete DAYOPEN['inc|'+s0.textContent]; } } if(t&&t.classList&&t.classList.contains('dayd')){ var k=t.getAttribute('data-k'); if(t.open) DAYOPEN[k]=1; else delete DAYOPEN[k]; } },true);
 
 
   // ---------- Surf cams ----------
@@ -711,7 +742,7 @@ body{background:transparent}
 
 
   // ---------- NSW RFS ----------
-  var RFS={key:'',html:'',data:null,at:0,lga:{},loading:false,src:''};
+  var RFS={key:'',html:'',data:null,at:0,lga:{},loading:false,src:'',view:'near',lastLga:''};
   var RFS_RAW='https://raw.githubusercontent.com/NuggetNut212/Weather-/main/data/rfs.json';
   var FDR={
     'NO RATING':['No rating','fdr-none','No fire danger rating is issued. Stay up to date.'],
@@ -769,25 +800,72 @@ body{background:transparent}
           +'</div>';
         if(bt||bm) h+='<p class="toban-note"><b>During a Total Fire Ban</b> you can’t light, maintain or use a fire in the open, including wood or charcoal barbecues. <a href="https://www.rfs.nsw.gov.au/fire-information/fdr-and-tobans/total-fire-ban-rules" target="_blank" rel="noopener">Total Fire Ban rules ↗</a></p>';
       }
-      var inc=(d.incidents||[]).map(function(x){ return {x:x,d:km(c.lat,c.lon,x.lat,x.lon)}; }).filter(function(o){return o.d<=100;}).sort(function(a,b){ var la=/emergency/i.test(a.x.category)?0:/watch/i.test(a.x.category)?1:2, lb=/emergency/i.test(b.x.category)?0:/watch/i.test(b.x.category)?1:2; return la-lb||a.d-b.d; }).slice(0,8);
-      h+='<div class="al-h">Fires and incidents within 100 km</div>';
-      if(inc.length){
-        inc.forEach(function(o){ var x=o.x, lv=/emergency/i.test(x.category)?3:/watch/i.test(x.category)?2:1;
-          h+='<a class="al-item sev'+lv+'" href="'+esc(x.link||'https://www.rfs.nsw.gov.au/fire-information/fires-near-me')+'" target="_blank" rel="noopener"><span class="al-ic">🔥</span><span><b>'+esc(x.title)+'</b><small><span class="lvl lvl'+lv+'">'+esc(x.category||'Advice')+'</span> '+Math.round(o.d)+' km away'
-            +(x.status?' · '+esc(x.status):'')+(x.type?' · '+esc(x.type):'')+(x.size?' · '+esc(x.size):'')+'</small></span></a>'; });
-      } else h+='<div class="al-item sev0"><span class="al-ic">✅</span><span><b>No RFS incidents listed within 100 km</b><small>Check Fires Near Me for the full map, including smaller fires.</small></span></div>';
+      var inc=(d.incidents||[]).map(function(x){ return {x:x,d:km(c.lat,c.lon,x.lat,x.lon)}; }).filter(function(o){return o.d<=100;}).sort(function(a,b){ return lvlOf(b.x)-lvlOf(a.x)||a.d-b.d; }).slice(0,10);
+      h+='<div class="al-h">Fire map</div><div class="seg rfs-seg" role="group" aria-label="Fire map area"><button type="button" data-r="near" aria-pressed="'+(RFS.view!=='all')+'">Near '+esc(c.name)+'</button><button type="button" data-r="all" aria-pressed="'+(RFS.view==='all')+'">All NSW</button></div>'
+        +'<div id="rfs-map-slot"></div><div class="rfs-key"><span><i class="kd k1"></i>Advice</span><span><i class="kd k2"></i>Watch and Act</span><span><i class="kd k3"></i>Emergency Warning</span><span>Bigger circles are bigger fires · tap a fire for details</span></div>';
+      h+='<div class="al-h">Fires and incidents within 100 km ('+inc.length+')</div>';
+      if(inc.length){ inc.forEach(function(o){ h+=incHTML(o.x,o.d); }); }
+      else h+='<div class="al-item sev0"><span class="al-ic">✅</span><span><b>No RFS incidents within 100 km</b><small>Switch the map to All NSW to see fires elsewhere in the state.</small></span></div>';
+      var ds2=d.districts||[];
+      if(ds2.length){
+        var mine=dist?gk(dist,/^name$/i):'';
+        h+='<details class="rfs-all"><summary>All NSW fire areas: today and tomorrow</summary><div class="rfs-tbl"><div class="rt-h"><span>Area</span><span>Today</span><span>Tomorrow</span></div>';
+        ds2.forEach(function(x){ var nm=gk(x,/^name$/i), t1=fdrOf(gk(x,/danger.*today|today.*danger|rating.*today/i)), t2=fdrOf(gk(x,/danger.*tomorrow|tomorrow.*danger|rating.*tomorrow/i)), b1=/yes|true/i.test(gk(x,/ban.*today|today.*ban/i)), b2=/yes|true/i.test(gk(x,/ban.*tomorrow|tomorrow.*ban/i));
+          h+='<div class="rt-r'+(nm===mine?' mine':'')+'"><span>'+esc(nm)+(nm===mine?' <small>(yours)</small>':'')+'</span><span><i class="chip '+t1[1]+'">'+esc(t1[0])+'</i>'+(b1?'<i class="chip tb">TOBAN</i>':'')+'</span><span><i class="chip '+t2[1]+'">'+esc(t2[0])+'</i>'+(b2?'<i class="chip tb">TOBAN</i>':'')+'</span></div>'; });
+        h+='</div></details>';
+      }
       var when=d.checked?new Date(d.checked):null;
-      h+='<p class="near-note">'+(when?'RFS data checked '+when.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+' '+when.toLocaleDateString('en-AU',{weekday:'short'})+'. ':'')+'© State of New South Wales (NSW Rural Fire Service). For current information go to www.rfs.nsw.gov.au.</p>';
+      h+='<p class="near-note">Official information from the NSW Rural Fire Service'+(when?', checked '+when.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+' '+when.toLocaleDateString('en-AU',{weekday:'short'}):'')+'. Updates every 30 minutes. Fire danger ratings are set each afternoon for the next day. <b>If you’re in danger, call 000.</b> © State of New South Wales (NSW Rural Fire Service). For current information go to www.rfs.nsw.gov.au.</p>';
     }
-    h+='<div class="off"><a href="https://www.rfs.nsw.gov.au/fire-information/fires-near-me" target="_blank" rel="noopener">Fires Near Me ↗</a><a href="https://www.rfs.nsw.gov.au/fire-information/fdr-and-tobans" target="_blank" rel="noopener">Fire Danger Ratings ↗</a><a href="https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date" target="_blank" rel="noopener">Hazards Near Me app ↗</a></div>';
-    RFS.html=h; RFS.key=alertKey(c);
-    var el=document.getElementById('rfs-body'); if(el&&current&&alertKey(current)===RFS.key){ el.innerHTML=h;
+    RFS.html=h; RFS.key=alertKey(c); RFS.lastLga=lga;
+    var el=document.getElementById('rfs-body'); if(el&&current&&alertKey(current)===RFS.key){ el.innerHTML=h; fireMap(c);
       var sel=document.getElementById('rfs-sel'); if(sel) sel.onchange=function(){ try{ if(sel.value) localStorage.setItem('ozskies-rfs-district',sel.value); else localStorage.removeItem('ozskies-rfs-district'); }catch(e){} renderRFS(c,lga); }; }
     if(window.updateJump) window.updateJump();
   }
+  function lvlOf(x){ return /emergency/i.test(x.category)?3:/watch/i.test(x.category)?2:1; }
+  function incHTML(x,dkm){
+    var lv=lvlOf(x), rows=[['Alert level',x.category||'Advice'],['Status',x.status],['Type',x.type],['Size',x.size],['Council area',x.council],['Responsible agency',x.agency],['Location',x.location],['Last updated',x.updated]];
+    return '<details class="inc sev'+lv+'"'+(DAYOPEN['inc|'+x.title]?' open':'')+'><summary><span class="al-ic">🔥</span><span><b>'+esc(x.title)+'</b><small><span class="lvl lvl'+lv+'">'+esc(x.category||'Advice')+'</span> '+(dkm!=null?Math.round(dkm)+' km away':'')+(x.status?' · '+esc(x.status):'')+(x.size?' · '+esc(x.size):'')+'</small></span><span class="inc-more">Details</span></summary>'
+      +'<div class="inc-body"><dl>'+rows.filter(function(r){return r[1];}).map(function(r){return '<div><dt>'+r[0]+'</dt><dd>'+esc(r[1])+'</dd></div>';}).join('')+'</dl>'
+      +'<button type="button" class="inc-map" data-lat="'+x.lat+'" data-lon="'+x.lon+'">Show on fire map</button></div></details>';
+  }
+  var FM={map:null,el:null,layer:null,pin:null};
+  function fireMap(c){
+    var slot=document.getElementById('rfs-map-slot'); if(!slot||!window.L||!RFS.data) return;
+    if(!FM.el){ FM.el=document.createElement('div'); FM.el.id='rfs-map'; }
+    slot.appendChild(FM.el);
+    if(!FM.map){
+      FM.map=L.map(FM.el,{scrollWheelZoom:false,minZoom:5,maxZoom:13});
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:13,attribution:'© OpenStreetMap · Fires © NSW RFS'}).addTo(FM.map);
+      FM.layer=L.layerGroup().addTo(FM.map);
+      FM.pin=L.circleMarker([c.lat,c.lon],{radius:7,color:'#fff',weight:2,fillColor:'#1C2B36',fillOpacity:1}).addTo(FM.map).bindTooltip(c.name);
+      FM.map.setView([c.lat,c.lon],8);
+    }
+    FM.pin.setLatLng([c.lat,c.lon]).setTooltipContent(c.name);
+    FM.layer.clearLayers();
+    var col={1:'#2F6FA3',2:'#E07B1E',3:'#C8322A'}, pts=[];
+    (RFS.data.incidents||[]).forEach(function(x){
+      var lv=lvlOf(x), ha=parseFloat(String(x.size||'').replace(/[^0-9.]/g,''))||0, r=Math.min(22,6+Math.sqrt(ha)/4);
+      var m=L.circleMarker([x.lat,x.lon],{radius:r,color:'#fff',weight:1.5,fillColor:col[lv],fillOpacity:.85}).addTo(FM.layer);
+      m.bindPopup('<div class="fpop"><b>'+esc(x.title)+'</b><br><span class="lvl lvl'+lv+'">'+esc(x.category||'Advice')+'</span><br>'
+        +[['Status',x.status],['Type',x.type],['Size',x.size],['Council',x.council],['Agency',x.agency],['Updated',x.updated]].filter(function(r){return r[1];}).map(function(r){return r[0]+': '+esc(r[1]);}).join('<br>')
+        +'<br><small>'+Math.round(km(c.lat,c.lon,x.lat,x.lon))+' km from '+esc(c.name)+'</small></div>');
+      x._m=m; pts.push([x.lat,x.lon]);
+    });
+    setTimeout(function(){ FM.map.invalidateSize();
+      if(RFS.view==='all'){ FM.map.fitBounds([[-37.6,140.9],[-28.1,153.7]]); }
+      else { var near=pts.filter(function(p){return km(c.lat,c.lon,p[0],p[1])<=100;}); near.push([c.lat,c.lon]);
+        if(near.length>1) FM.map.fitBounds(near,{padding:[30,30],maxZoom:10}); else FM.map.setView([c.lat,c.lon],9); }
+    },60);
+    Array.prototype.forEach.call(document.querySelectorAll('.rfs-seg button'),function(b){ b.onclick=function(){ RFS.view=b.getAttribute('data-r'); renderRFS(c,RFS.lastLga); }; });
+    Array.prototype.forEach.call(document.querySelectorAll('.inc-map'),function(b){ b.onclick=function(){ var la=+b.getAttribute('data-lat'), lo=+b.getAttribute('data-lon');
+      FM.el.scrollIntoView({behavior:'smooth',block:'center'}); FM.map.setView([la,lo],11);
+      (RFS.data.incidents||[]).forEach(function(x){ if(x.lat===la&&x.lon===lo&&x._m) setTimeout(function(){x._m.openPopup();},400); }); }; });
+  }
+
   function loadRFS(c){
     if(stateOf(c)!=='NSW'||!window.fetch||c.lat==null) return;
-    if(RFS.html&&RFS.key===alertKey(c)){ var sel=document.getElementById('rfs-sel'); if(sel) sel.onchange=function(){ try{ if(sel.value) localStorage.setItem('ozskies-rfs-district',sel.value); else localStorage.removeItem('ozskies-rfs-district'); }catch(e){} lgaFor(c).then(function(l){ renderRFS(c,l); }); }; if(Date.now()-RFS.at<15*60000) return; }
+    if(RFS.html&&RFS.key===alertKey(c)){ fireMap(c); var sel=document.getElementById('rfs-sel'); if(sel) sel.onchange=function(){ try{ if(sel.value) localStorage.setItem('ozskies-rfs-district',sel.value); else localStorage.removeItem('ozskies-rfs-district'); }catch(e){} lgaFor(c).then(function(l){ renderRFS(c,l); }); }; if(Date.now()-RFS.at<15*60000) return; }
     Promise.all([fetchRFS(),lgaFor(c)]).then(function(r){ if(current&&alertKey(current)===alertKey(c)) renderRFS(c,r[1]); });
   }
 
