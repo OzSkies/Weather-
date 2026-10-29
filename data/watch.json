@@ -4,7 +4,8 @@
   "name": "Sydney",
   "state": "NSW",
   "lat": -33.86,
-  "lon": 151.257
+  "lon": 151.257,
+  "lga": ""
  },
  {
   "id": "melbourne",
@@ -53,7 +54,8 @@
   "name": "Newcastle",
   "state": "NSW",
   "lat": -32.932,
-  "lon": 151.778
+  "lon": 151.778,
+  "lga": "Newcastle"
  },
  {
   "id": "cairns",
@@ -88,35 +90,40 @@
   "name": "Pottsville",
   "state": "NSW",
   "lat": -28.392,
-  "lon": 153.542
+  "lon": 153.542,
+  "lga": "Tweed"
  },
  {
   "id": "tweed-heads",
   "name": "Tweed Heads",
   "state": "NSW",
   "lat": -28.184,
-  "lon": 153.527
+  "lon": 153.527,
+  "lga": "Tweed"
  },
  {
   "id": "byron-bay",
   "name": "Byron Bay",
   "state": "NSW",
   "lat": -28.661,
-  "lon": 153.593
+  "lon": 153.593,
+  "lga": "Byron Shire"
  },
  {
   "id": "port-macquarie",
   "name": "Port Macquarie",
   "state": "NSW",
   "lat": -31.44,
-  "lon": 152.873
+  "lon": 152.873,
+  "lga": "Port Macquarie-Hastings"
  },
  {
   "id": "uki",
   "name": "Uki",
   "state": "NSW",
   "lat": -28.381,
-  "lon": 153.316
+  "lon": 153.316,
+  "lga": ""
  },
  {
   "id": "yulara",
@@ -130,14 +137,16 @@
   "name": "Kingscliff",
   "state": "NSW",
   "lat": -28.2547,
-  "lon": 153.5756
+  "lon": 153.5756,
+  "lga": "Tweed"
  },
  {
   "id": "banora-point",
   "name": "Banora Point",
   "state": "NSW",
   "lat": -28.2134,
-  "lon": 153.536
+  "lon": 153.536,
+  "lga": "Tweed"
  },
  {
   "id": "hobart",
@@ -158,7 +167,8 @@
   "name": "Woodenbong",
   "state": "NSW",
   "lat": -28.3941,
-  "lon": 152.6185
+  "lon": 152.6185,
+  "lga": "Kyogle"
  },
  {
   "id": "stanthorpe",
