@@ -66,7 +66,11 @@ def norm(state, p, xy, link=""):
     xy = [x, y]
     if not (-45 < y < -9 and 110 < x < 160):
         return None
-    return {
+    desc = strip(p.get("description", "")) if isinstance(p.get("description"), str) else ""
+    def dfield(name):
+        m = re.search(name + r"\s*:\s*(.*?)(?=\s+[A-Z][A-Z /]{2,}\s*:|$)", desc)
+        return m.group(1).strip() if m else ""
+    res = {
         "state": state, "title": title or "Fire", "category": level,
         "status": pick(p, ["status", "Status", "CurrentStatus", "incidentStatus", "statusDescription"]),
         "type": typ, "size": pick(p, ["size", "sizeFmt", "Size", "area", "AreaBurnt", "fireSize"]),
@@ -76,6 +80,12 @@ def norm(state, p, xy, link=""):
         "updated": pick(p, ["updated", "PublishDateLocal_ISO", "lastUpdated", "updatedTime", "pubDate", "Date", "created"]),
         "lat": round(float(xy[1]), 5), "lon": round(float(xy[0]), 5), "link": link,
     }
+    if desc:
+        for key, label in (("status", "STATUS"), ("type", "TYPE"), ("size", "SIZE"), ("location", "LOCATION"),
+                           ("council", "COUNCIL AREA"), ("agency", "RESPONSIBLE AGENCY"), ("updated", "UPDATED")):
+            if not res.get(key):
+                res[key] = dfield(label)
+    return res
 
 def from_geojson(state, data):
     out = []
