@@ -127,6 +127,8 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .tide-chart{width:100%;height:110px;display:block;margin-top:10px}
 .surf-label{display:inline-block;margin-left:6px;font-size:13px;font-weight:700;color:var(--cool)}
 .radar.active{background:color-mix(in srgb,var(--cool) 12%,transparent)}
+.radar-pick{display:flex;flex-direction:column;gap:4px;font-size:14px;color:var(--muted);margin-bottom:8px}
+.radar-pick select{font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 #map{height:320px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:var(--surface)}
 .radar-bar{display:flex;align-items:center;gap:12px;margin-top:8px}
 .radar-bar button{font:inherit;font-weight:700;color:var(--bg);background:var(--cool);border:0;border-radius:10px;padding:6px 12px;cursor:pointer}
@@ -166,6 +168,9 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   </section>
   <section class="section" id="radar-live" hidden>
     <h2>Live rain radar</h2>
+    <label class="radar-pick">Choose a radar
+      <select id="radar-pick"><option value="">Nearest to this place</option></select>
+    </label>
     <div id="map" role="img" aria-label="Animated rain radar map"></div>
     <div class="radar-bar"><button type="button" id="rplay">Pause</button><span id="rtime"></span></div>
     <p class="near-note">Radar from <a href="https://www.rainviewer.com" target="_blank" rel="noopener">RainViewer</a> (Bureau of Meteorology data). Checks for new radar every 10 minutes. Map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>
@@ -178,7 +183,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   var DATA = JSON.parse(document.getElementById('wx-data').textContent);
   var TOWNS = JSON.parse(document.getElementById('towns').textContent);
   var ABBR = {"New South Wales":"NSW","Victoria":"VIC","Queensland":"QLD","Western Australia":"WA","South Australia":"SA","Tasmania":"TAS","Northern Territory":"NT","Australian Capital Territory":"ACT"};
-  var RADARS=[["02", "Melbourne (Laverton)", -37.86, 144.76], ["03", "Wollongong (Appin)", -34.26, 150.87], ["04", "Newcastle", -32.73, 152.03], ["05", "Carnarvon", -24.89, 113.67], ["06", "Geraldton", -28.8, 114.7], ["07", "Wyndham", -15.45, 128.12], ["08", "Gympie (Mt Kanigan)", -25.96, 152.58], ["09", "Gove", -12.28, 136.82], ["14", "Mount Gambier", -37.75, 140.77], ["15", "Dampier", -20.65, 116.69], ["16", "Port Hedland", -20.37, 118.63], ["17", "Broome", -17.95, 122.24], ["19", "Cairns", -16.82, 145.68], ["22", "Mackay", -21.12, 149.22], ["23", "Gladstone", -23.86, 151.26], ["24", "Bowen", -19.89, 148.08], ["25", "Alice Springs", -23.8, 133.89], ["27", "Woomera", -31.16, 136.8], ["28", "Grafton", -29.62, 152.95], ["29", "Learmonth", -22.1, 114.0], ["31", "Albany", -34.94, 117.82], ["32", "Esperance", -33.83, 121.89], ["33", "Ceduna", -32.13, 133.7], ["36", "Mornington Island", -16.67, 139.17], ["37", "Hobart Airport", -42.83, 147.5], ["38", "Newdegate", -33.1, 119.01], ["39", "Halls Creek", -18.23, 127.66], ["40", "Canberra (Captains Flat)", -35.66, 149.51], ["42", "Katherine (Tindal)", -14.51, 132.45], ["44", "Giles", -25.03, 128.3], ["46", "Adelaide (Sellicks Hill)", -35.33, 138.5], ["48", "Kalgoorlie", -30.78, 121.45], ["49", "Yarrawonga", -36.03, 146.02], ["50", "Brisbane (Marburg)", -27.61, 152.54], ["52", "North West Tasmania", -41.18, 145.58], ["53", "Moree", -29.5, 149.85], ["55", "Wagga Wagga", -35.17, 147.47], ["56", "Longreach", -23.43, 144.29], ["58", "South Doodlakine", -31.78, 117.95], ["63", "Darwin (Berrimah)", -12.46, 130.93], ["64", "Adelaide (Buckland Park)", -34.62, 138.47], ["66", "Brisbane (Mt Stapylton)", -27.72, 153.24], ["67", "Warrego", -26.44, 147.35], ["68", "Bairnsdale", -37.89, 147.58], ["69", "Namoi (Blackjack Mountain)", -31.02, 150.19], ["70", "Perth (Serpentine)", -32.39, 115.87], ["71", "Sydney (Terrey Hills)", -33.7, 151.21], ["72", "Emerald", -23.55, 148.24], ["73", "Townsville (Hervey Range)", -19.42, 146.55], ["75", "Mount Isa", -20.71, 139.56], ["76", "Hobart (Mt Koonya)", -43.11, 147.81], ["77", "Warruwi", -11.65, 133.38], ["78", "Weipa", -12.67, 141.92], ["79", "Watheroo", -30.36, 116.29], ["93", "Brewarrina", -29.97, 146.81], ["94", "Hillston", -33.55, 145.53], ["95", "Rainbow", -35.99, 142.01], ["96", "Yeoval", -32.74, 148.71], ["97", "Mildura", -34.29, 141.6], ["98", "Taroom", -25.7, 149.9]];
+  var RADARS=[["02", "Melbourne (Laverton)", -37.86, 144.76, "VIC"], ["03", "Wollongong (Appin)", -34.26, 150.87, "NSW"], ["04", "Newcastle", -32.73, 152.03, "NSW"], ["05", "Carnarvon", -24.89, 113.67, "WA"], ["06", "Geraldton", -28.8, 114.7, "WA"], ["07", "Wyndham", -15.45, 128.12, "WA"], ["08", "Gympie (Mt Kanigan)", -25.96, 152.58, "QLD"], ["09", "Gove", -12.28, 136.82, "NT"], ["14", "Mount Gambier", -37.75, 140.77, "SA"], ["15", "Dampier", -20.65, 116.69, "WA"], ["16", "Port Hedland", -20.37, 118.63, "WA"], ["17", "Broome", -17.95, 122.24, "WA"], ["19", "Cairns", -16.82, 145.68, "QLD"], ["22", "Mackay", -21.12, 149.22, "QLD"], ["23", "Gladstone", -23.86, 151.26, "QLD"], ["24", "Bowen", -19.89, 148.08, "QLD"], ["25", "Alice Springs", -23.8, 133.89, "NT"], ["27", "Woomera", -31.16, 136.8, "SA"], ["28", "Grafton", -29.62, 152.95, "NSW"], ["29", "Learmonth", -22.1, 114.0, "WA"], ["31", "Albany", -34.94, 117.82, "WA"], ["32", "Esperance", -33.83, 121.89, "WA"], ["33", "Ceduna", -32.13, 133.7, "SA"], ["36", "Mornington Island", -16.67, 139.17, "QLD"], ["37", "Hobart Airport", -42.83, 147.5, "TAS"], ["38", "Newdegate", -33.1, 119.01, "WA"], ["39", "Halls Creek", -18.23, 127.66, "WA"], ["40", "Canberra (Captains Flat)", -35.66, 149.51, "ACT"], ["42", "Katherine (Tindal)", -14.51, 132.45, "NT"], ["44", "Giles", -25.03, 128.3, "WA"], ["46", "Adelaide (Sellicks Hill)", -35.33, 138.5, "SA"], ["48", "Kalgoorlie", -30.78, 121.45, "WA"], ["49", "Yarrawonga", -36.03, 146.02, "VIC"], ["50", "Brisbane (Marburg)", -27.61, 152.54, "QLD"], ["52", "North West Tasmania", -41.18, 145.58, "TAS"], ["53", "Moree", -29.5, 149.85, "NSW"], ["55", "Wagga Wagga", -35.17, 147.47, "NSW"], ["56", "Longreach", -23.43, 144.29, "QLD"], ["58", "South Doodlakine", -31.78, 117.95, "WA"], ["63", "Darwin (Berrimah)", -12.46, 130.93, "NT"], ["64", "Adelaide (Buckland Park)", -34.62, 138.47, "SA"], ["66", "Brisbane (Mt Stapylton)", -27.72, 153.24, "QLD"], ["67", "Warrego", -26.44, 147.35, "QLD"], ["68", "Bairnsdale", -37.89, 147.58, "VIC"], ["69", "Namoi (Blackjack Mountain)", -31.02, 150.19, "NSW"], ["70", "Perth (Serpentine)", -32.39, 115.87, "WA"], ["71", "Sydney (Terrey Hills)", -33.7, 151.21, "NSW"], ["72", "Emerald", -23.55, 148.24, "QLD"], ["73", "Townsville (Hervey Range)", -19.42, 146.55, "QLD"], ["75", "Mount Isa", -20.71, 139.56, "QLD"], ["76", "Hobart (Mt Koonya)", -43.11, 147.81, "TAS"], ["77", "Warruwi", -11.65, 133.38, "NT"], ["78", "Weipa", -12.67, 141.92, "QLD"], ["79", "Watheroo", -30.36, 116.29, "WA"], ["93", "Brewarrina", -29.97, 146.81, "NSW"], ["94", "Hillston", -33.55, 145.53, "NSW"], ["95", "Rainbow", -35.99, 142.01, "VIC"], ["96", "Yeoval", -32.74, 148.71, "NSW"], ["97", "Mildura", -34.29, 141.6, "VIC"], ["98", "Taroom", -25.7, 149.9, "QLD"], ["26", "Perth Airport", -31.93, 115.98, "WA"], ["62", "Norfolk Island", -29.03, 167.93, "NSW"]];
   var cities = DATA.cities.slice().sort(function(a,b){return (a.order||0)-(b.order||0);});
   var current = null, nearNote = null, dbRef = null, requested = {};
   var main = document.getElementById('main'), nav = document.getElementById('cities');
@@ -337,7 +342,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 
   var RV={sel:null,ring:null,dot:null,map:null,marker:null,layers:[],frames:[],i:0,anim:null,playing:true,lat:-28.39,lon:153.54,gen:0,key:''};
   function radarCenter(lat,lon){
-    var k=lat.toFixed(3)+','+lon.toFixed(3); if(k===RV.key) return; RV.key=k; RV.sel=null; if(RV.map&&RV.ring){RV.map.removeLayer(RV.ring);RV.map.removeLayer(RV.dot);RV.ring=null;RV.dot=null;} RV.lat=lat; RV.lon=lon;
+    var k=lat.toFixed(3)+','+lon.toFixed(3); if(k===RV.key) return; RV.key=k; RV.sel=null; if(RV.map&&RV.ring){RV.map.removeLayer(RV.ring);RV.map.removeLayer(RV.dot);RV.ring=null;RV.dot=null;} var rp=document.getElementById('radar-pick'); if(rp) rp.value=''; RV.lat=lat; RV.lon=lon;
     if(RV.map){ RV.map.setView([lat,lon],8); RV.marker.setLatLng([lat,lon]); }
   }
   function showFrame(i){
@@ -369,23 +374,37 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     }).catch(function(){});
   }
 
+  function switchRadar(code,scroll){
+    var r=RADARS.filter(function(x){return x[0]===code;})[0]; if(!r||!RV.map) return;
+    RV.sel=code;
+    if(RV.ring) RV.map.removeLayer(RV.ring);
+    if(RV.dot) RV.map.removeLayer(RV.dot);
+    RV.ring=L.circle([r[2],r[3]],{radius:128000,color:'#3B82B8',weight:1.5,fill:false,dashArray:'6 6'}).addTo(RV.map);
+    RV.dot=L.circleMarker([r[2],r[3]],{radius:5,color:'#fff',weight:2,fillColor:'#3B82B8',fillOpacity:1}).addTo(RV.map).bindTooltip(r[1]+' radar');
+    RV.map.setView([r[2],r[3]],8);
+    Array.prototype.forEach.call(document.querySelectorAll('a.radar'),function(b){b.classList.toggle('active',b.getAttribute('data-code')===code);});
+    var sel=document.getElementById('radar-pick'); if(sel) sel.value=code;
+    if(scroll) document.getElementById('radar-live').scrollIntoView({behavior:'smooth',block:'start'});
+  }
   function wireRadars(){
     Array.prototype.forEach.call(document.querySelectorAll('a.radar'), function(a){
-      a.onclick=function(e){
-        if(!RV.map) return;
-        e.preventDefault();
-        var lat=+a.getAttribute('data-lat'), lon=+a.getAttribute('data-lon');
-        RV.sel=a.getAttribute('data-code');
-        if(RV.ring) RV.map.removeLayer(RV.ring);
-        if(RV.dot) RV.map.removeLayer(RV.dot);
-        RV.ring=L.circle([lat,lon],{radius:128000,color:'#3B82B8',weight:1.5,fill:false,dashArray:'6 6'}).addTo(RV.map);
-        RV.dot=L.circleMarker([lat,lon],{radius:5,color:'#fff',weight:2,fillColor:'#3B82B8',fillOpacity:1}).addTo(RV.map).bindTooltip(a.getAttribute('data-name')+' radar');
-        RV.map.setView([lat,lon],8);
-        Array.prototype.forEach.call(document.querySelectorAll('a.radar'),function(b){b.classList.toggle('active',b===a);});
-        document.getElementById('radar-live').scrollIntoView({behavior:'smooth',block:'start'});
-      };
+      a.onclick=function(e){ if(!RV.map) return; e.preventDefault(); switchRadar(a.getAttribute('data-code'),true); };
     });
+    var sel=document.getElementById('radar-pick'); if(sel) sel.value=RV.sel||'';
   }
+  (function(){
+    var sel=document.getElementById('radar-pick'), STN={ACT:'Australian Capital Territory',NSW:'New South Wales',NT:'Northern Territory',QLD:'Queensland',SA:'South Australia',TAS:'Tasmania',VIC:'Victoria',WA:'Western Australia'};
+    Object.keys(STN).forEach(function(st){
+      var g=document.createElement('optgroup'); g.label=STN[st];
+      RADARS.filter(function(r){return r[4]===st;}).sort(function(a,b){return a[1]<b[1]?-1:1;}).forEach(function(r){ var o=document.createElement('option'); o.value=r[0]; o.textContent=r[1]; g.appendChild(o); });
+      sel.appendChild(g);
+    });
+    sel.onchange=function(){
+      if(sel.value) switchRadar(sel.value,false);
+      else { RV.sel=null; if(RV.ring){RV.map.removeLayer(RV.ring);RV.map.removeLayer(RV.dot);RV.ring=null;RV.dot=null;} RV.map.setView([RV.lat,RV.lon],8);
+        Array.prototype.forEach.call(document.querySelectorAll('a.radar'),function(b){b.classList.remove('active');}); }
+    };
+  })();
 
   // ---------- Surf and tides ----------
   var SURF={key:'',cache:{},timer:null,name:''};
