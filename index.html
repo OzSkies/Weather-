@@ -163,6 +163,18 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .cam-item .go{color:var(--cool);font-weight:700;white-space:nowrap}
 .cam-item.on{background:color-mix(in srgb,var(--cool) 12%,transparent)}
 #cams{scroll-margin-top:64px}
+.cfb{display:inline-block;font-style:normal;font-size:11px;font-weight:700;line-height:1;padding:3px 6px;border-radius:999px;margin-left:6px;vertical-align:2px;color:#fff}
+.cf-high{background:#2E8B57}.cf-med{background:#D08A1E}.cf-low{background:#C2452D}
+.cf{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.cft{color:inherit;background:none!important}
+.cft.cf-high{color:#2E8B57}.cft.cf-med{color:#B87512}.cft.cf-low{color:#C2452D}
+.why{color:var(--muted);font-size:13px}
+.lg-why{flex-basis:100%;font-size:12px}
+.hconf{display:flex;gap:10px;align-items:flex-start;margin-top:12px;background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:14px;padding:10px 12px}
+.hconf .cfb{font-size:14px;padding:6px 9px;margin:0}
+.hconf b{display:block;font-size:15px}
+.hconf small{display:block;color:var(--muted);font-size:13px}
+.day,.day-head{grid-template-columns:minmax(96px,1.2fr) 28px 34px minmax(56px,2fr) 36px 64px}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -349,7 +361,8 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   function uvWord(u){ return u<3?'Low':u<6?'Moderate':u<8?'High':u<11?'Very high':'Extreme'; }
   function tm(u){ return new Date(u*1000).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}); }
   function dayDetail(d,x,c){
-    var rows=[];
+    var rows=[], cf=confDay(c,DAYIDX,d);
+    if(cf) rows.push(['Forecast confidence','<b class="cft cf-'+cf.lvl+'">'+cf.score+'% · '+cf.word+'</b><br><span class="why">'+esc(cf.why)+'</span>']);
     rows.push(['Conditions',esc(d.condition||'–')]);
     rows.push(['Chance of rain',d.rain!=null?n(d.rain)+'% chance of any rain':'–']);
     if(x&&x.mm!=null) rows.push(['Expected rain',x.mm<0.5?'Little or none':(x.mm<1?'Under 1 mm':'About '+Math.round(x.mm)+' mm')]);
@@ -390,6 +403,46 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     sec.hidden=false; if(window.updateJump) window.updateJump();
   }
 
+
+  // ---------- Forecast confidence ----------
+  var CONF={}, DAYIDX=0, MODELS=['ecmwf_ifs025','gfs_seamless','icon_seamless','bom_access_global'];
+  var MNAME={ecmwf_ifs025:'European',gfs_seamless:'US',icon_seamless:'German',bom_access_global:'Bureau ACCESS'};
+  function confKey(c){ return c&&c.lat!=null?c.lat.toFixed(2)+','+c.lon.toFixed(2):null; }
+  function confOf(c){ var k=confKey(c), e=k&&CONF[k]; if(!e){ loadConf(c); return null; } return e.d; }
+  function loadConf(c){
+    var k=confKey(c); if(!k||!window.fetch||CONF[k]) return; CONF[k]={loading:true,d:null};
+    fetch('https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon+'&daily=temperature_2m_max,precipitation_sum&models='+MODELS.join(',')+'&timezone=auto&timeformat=unixtime&forecast_days=7')
+      .then(function(r){return r.json();}).then(function(d){
+        if(!d||!d.daily){ CONF[k]={d:null,fail:true}; return; }
+        var dl=d.daily, out=[];
+        for(var i=0;i<dl.time.length;i++){
+          var hi=[],rn=[],used=[];
+          MODELS.forEach(function(m){ var t=dl['temperature_2m_max_'+m], r=dl['precipitation_sum_'+m]; if(t&&t[i]!=null&&r&&r[i]!=null){ hi.push(t[i]); rn.push(r[i]); used.push(m); } });
+          if(hi.length<2){ out.push(null); continue; }
+          var ts=Math.max.apply(null,hi)-Math.min.apply(null,hi), nWet=rn.filter(function(v){return v>=1;}).length, n=rn.length;
+          var rainDis=(nWet===0||nWet===n)?0:1-Math.abs(nWet-n/2)/(n/2), mmS=Math.max.apply(null,rn)-Math.min.apply(null,rn);
+          out.push({ts:ts,nWet:nWet,n:n,rainDis:rainDis,mmS:mmS,mmMin:Math.min.apply(null,rn),mmMax:Math.max.apply(null,rn)});
+        }
+        CONF[k]={d:out}; if(current&&confKey(current)===k) renderCity(current);
+      }).catch(function(){ CONF[k]={d:null,fail:true}; });
+  }
+  function confDay(c,i,d){
+    var arr=confOf(c), m=arr&&arr[i]; if(!m) return null;
+    var sc=97-m.ts*5-m.rainDis*30-Math.min(m.mmS,20)*0.8-i*3;
+    if(d&&d.conf==='low') sc-=8;
+    sc=Math.round(Math.max(15,Math.min(97,sc)));
+    var lvl=sc>=75?'high':sc>=50?'med':'low', word=sc>=75?'High confidence':sc>=50?'Medium confidence':'Low confidence';
+    var why=m.n+' weather models '+(m.ts<=1.5?'agree closely on the temperature':'differ by about '+Math.round(m.ts)+'° on the high')+', and ';
+    why+= m.nWet===0?'all expect a dry day':m.nWet===m.n?'all expect rain'+(m.mmS>=5?' but disagree on how much ('+Math.round(m.mmMin)+'–'+Math.round(m.mmMax)+' mm)':''):m.nWet+' of '+m.n+' expect rain';
+    why+=i===0?'.':i===1?'. Tomorrow is one day out.':'. This day is '+i+' days out, and forecasts get less certain further ahead.';
+    return {score:sc,lvl:lvl,word:word,why:why};
+  }
+  function confBadge(c,i,d){ var f=confDay(c,i,d); return f?'<i class="cfb cf-'+f.lvl+'" title="'+esc(f.word+': '+f.why)+'">'+f.score+'%</i>':''; }
+  function heroConf(c){
+    var f=confDay(c,0,c.days&&c.days[0]); if(!f) return '';
+    return '<div class="hconf"><span class="cfb cf-'+f.lvl+'">'+f.score+'%</span><span><b>'+f.word+' in today’s forecast</b><small>'+esc(f.why)+'</small></span></div>';
+  }
+
   function renderNav(){
     nav.innerHTML='';
     cities.forEach(function(c){
@@ -425,6 +478,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       +'<div class="now"><div class="temp num">'+n(today.high)+'<sup>'+u+'</sup></div><div class="big-icon">'+icon(today.icon)+'</div></div>'
       +'<div class="cond">'+esc(today.condition||'')+'</div>'
       +'<div class="hilo">Overnight low '+n(today.low)+u+(cur.feels!=null?'  ·  Feels like up to '+n(cur.feels)+u:'')+'</div>'
+      +heroConf(c)
       +'<div class="facts"><div class="fact"><b>'+n(today.rain)+'%</b><span>Chance of rain</span></div>'
       +'<div class="fact"><b>'+esc(cur.wind||'–')+'</b><span>Wind</span></div>'
       +'<div class="fact"><b>'+(cur.humidity!=null?n(cur.humidity)+'%':'–')+'</b><span>Humidity</span></div></div>'
@@ -444,13 +498,13 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
         var span=hi-lo||1, l=(d.low-lo)/span*100, w=Math.max((d.high-d.low)/span*100,4), x=X&&X[i], key=c.id+'|'+d.day;
         var mm=x&&x.mm!=null?x.mm:null;
         h+='<details class="dayd" data-k="'+esc(key)+'"'+(DAYOPEN[key]?' open':'')+'><summary class="day">'
-          +'<span class="d" title="'+esc(d.conf?('Forecast agreement: '+d.conf):'')+'"><span class="dn">'+esc(d.day)+(d.conf?'<i class="conf conf-'+esc(d.conf)+'"></i>':'')+'</span><small class="dc">'+esc((d.condition||'').split(',')[0])+'</small></span>'+icon(d.icon)
+          +'<span class="d"><span class="dn">'+esc(d.day)+confBadge(c,i,d)+'</span><small class="dc">'+esc((d.condition||'').split(',')[0])+'</small></span>'+icon(d.icon)
           +'<span class="lo">'+n(d.low)+'°</span><div class="track" title="'+esc(d.condition||'')+'"><div class="bar" style="left:'+l+'%;width:'+w+'%;background:linear-gradient(90deg,'+tempColor(d.low,lo,hi)+','+tempColor(d.high,lo,hi)+')"></div></div>'
           +'<span class="hi">'+n(d.high)+'°</span>'
           +'<span class="rain"><b>'+(d.rain!=null?n(d.rain)+'%':'–')+'</b><small>'+(mm!=null&&mm>=0.5?(mm<1?'&lt;1':Math.round(mm))+' mm':'rain')+'</small></span>'
-          +'</summary><div class="dmore">'+dayDetail(d,x,c)+'</div></details>';
+          +'</summary><div class="dmore">'+(DAYIDX=i,dayDetail(d,x,c))+'</div></details>';
       });
-      h+='</div>'+(hasConf?'':'<!--')+'<div class="legend"><span><i class="conf conf-high"></i>Forecasts agree</span><span><i class="conf conf-medium"></i>Some disagreement</span><span><i class="conf conf-low"></i>Wide disagreement</span></div>'+(hasConf?'':'-->')+'</div>';
+      h+='</div>'+(confOf(c)?'<div class="legend"><span><i class="cf cf-high"></i>High confidence</span><span><i class="cf cf-med"></i>Medium</span><span><i class="cf cf-low"></i>Low</span><span class="lg-why">Based on how closely 4 weather models agree and how far ahead the day is.</span></div>':'')+'</div>';
     }
     if(nearNote){ radarCenter(nearNote.lat,nearNote.lon); loadSurf(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); camsFor(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); } else { radarCenter(c.lat,c.lon); loadSurf(c.lat,c.lon,c.name); camsFor(c.lat,c.lon,c.name); }
     h+= nearNote ? radarHTML(nearNote.lat,nearNote.lon,nearNote.town) : radarHTML(c.lat,c.lon,c.name);
