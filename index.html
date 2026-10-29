@@ -1395,6 +1395,20 @@ body{background:transparent}
   window.addEventListener('scroll',function(){ if(!spy.t){ spy.t=setTimeout(function(){ spy.t=null; spy(); },100); } },{passive:true});
   setInterval(window.updateJump,3000);
 
+
+  // ---------- Auto-update to newest version ----------
+  var APPVER='20261029095438';
+  function checkVersion(){
+    if(!window.fetch||location.protocol.indexOf('http')!==0) return;
+    fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
+      var m=t.match(/var APPVER='(\d+)'/); if(!m||m[1]===APPVER) return;
+      var tried=0; try{ tried=+sessionStorage.getItem('ozv-'+m[1])||0; sessionStorage.setItem('ozv-'+m[1],tried+1); }catch(e){}
+      if(tried<2) location.replace(location.pathname+'?v='+m[1]+location.hash);
+    }).catch(function(){});
+  }
+  checkVersion(); setInterval(checkVersion,10*60000);
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) checkVersion(); });
+
   document.getElementById('count').textContent = TOWNS.length.toLocaleString('en-AU');
   (function(){ var h=location.hash.slice(1);
     if(h.indexOf('t-')===0){ var tw=TOWNS.filter(function(t){return 't-'+slug(t[0]+' '+t[1])===h;})[0];
