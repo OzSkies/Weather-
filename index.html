@@ -152,6 +152,17 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .swell-chart .sv{font-size:12px;font-weight:700;fill:var(--ink)}
 .swell-chart .st{font-size:12px;fill:var(--muted)}
 @media (max-width:420px){.swell-top{flex-direction:column;align-items:flex-start}}
+.cam-frame{position:relative;width:100%;aspect-ratio:16/9;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#0e1820}
+.cam-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.cam-cap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin:8px 2px 0;font-size:14px}
+.cam-cap span{color:var(--muted)}
+.cam-list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-top:12px}
+.cam-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border:0;border-top:1px solid var(--line);background:none;font:inherit;color:var(--ink);text-align:left;text-decoration:none;cursor:pointer}
+.cam-item:first-child{border-top:0}
+.cam-item small{display:block;color:var(--muted);font-size:13px}
+.cam-item .go{color:var(--cool);font-weight:700;white-space:nowrap}
+.cam-item.on{background:color-mix(in srgb,var(--cool) 12%,transparent)}
+#cams{scroll-margin-top:64px}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -236,6 +247,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     <button type="button" data-t="sec-week">7-day forecast</button>
     <button type="button" data-t="surf">Surf</button>
     <button type="button" data-t="ocean-wrap">Ocean map</button>
+    <button type="button" data-t="cams">Surf cams</button>
     <button type="button" data-t="radar-live">Live radar</button>
     <button type="button" data-t="sec-radars">Radar stations</button>
     <button type="button" data-t="top" class="totop">Back to top ↑</button>
@@ -257,6 +269,12 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       <p class="near-note">Darker blue water is deeper. The flowing streaks and arrows show which way the water is moving: blue is gentle, green moderate, orange to red big swell or a strong current. Tap an arrow for details, and slide or press Play to step through the next 48 hours. Depth map © Esri, GEBCO, NOAA.</p>
     </div>
     <p class="near-note">Surf and tide data (tides are shown at the top with the forecast) from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> marine forecasts, updated every 30 minutes. Wave models are less precise right at the shore, and tide times can be out by up to half an hour. For boating, check official Bureau of Meteorology tide tables.</p>
+  </section>
+  <section class="section" id="cams" hidden>
+    <h2 id="cams-title">Surf cams</h2>
+    <div id="cam-player"></div>
+    <div id="cam-list" class="cam-list"></div>
+    <p class="near-note">Free cams are Transport for NSW coastal bar cameras, aimed at river and harbour entrances rather than individual surf breaks. Swellnet and Surfline cams open on their own sites and may need a free login or subscription. <a href="https://www.swellnet.com/surfcams" target="_blank" rel="noopener">Browse all Swellnet cams ↗</a></p>
   </section>
   <section class="section" id="radar-live" hidden>
     <h2>Live rain radar</h2>
@@ -344,6 +362,34 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   }
   main.addEventListener('toggle',function(e){ var t=e.target; if(t&&t.classList&&t.classList.contains('dayd')){ var k=t.getAttribute('data-k'); if(t.open) DAYOPEN[k]=1; else delete DAYOPEN[k]; } },true);
 
+
+  // ---------- Surf cams ----------
+  var CAMS=[["Kingscliff (Cudgen Creek)", -28.258, 153.581, "Transport for NSW", "free", "https://widget.coastalcoms.com/video/73a52fac-d291-42be-a1f1-dd859c5dd28f", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/cudgen"], ["Tweed River entrance", -28.166, 153.553, "Transport for NSW", "free", "https://widget.coastalcoms.com/video/6321b2c5-7545-49d1-83b3-a10fd2c8926b", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/tweed-heads-entrance"], ["Brunswick Heads", -28.537, 153.556, "Transport for NSW", "free", "https://widget.coastalcoms.com/video/db6bcca9-545e-4575-95ee-a5b1d4786f63", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/brunswick-heads"], ["Tweed Heads (offshore)", -28.172, 153.552, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/tweed-heads"], ["Ballina", -28.875, 153.592, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/ballina"], ["Evans Head", -29.111, 153.438, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/evans-head"], ["Iluka / Yamba", -29.428, 153.36, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/iluka/yamba"], ["Coffs Harbour", -30.303, 153.146, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/coffs-harbour"], ["Nambucca Heads", -30.646, 153.012, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/nambucca-heads"], ["South West Rocks", -30.884, 153.04, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/south-west-rocks-and-macleay-river"], ["Port Macquarie", -31.428, 152.918, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/port-macquarie"], ["Camden Haven", -31.645, 152.838, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/camden-haven"], ["Forster", -32.17, 152.512, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/forster"], ["Shoal Bay, Port Stephens", -32.721, 152.175, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/shoal-bay-port-stephens"], ["Swansea", -33.087, 151.664, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/swansea"], ["Sussex Inlet", -35.16, 150.6, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/sussex-inlet"], ["Batemans Bay", -35.716, 150.2, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/batemans-bay"], ["Moruya", -35.908, 150.15, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/moruya"], ["Narooma", -36.214, 150.14, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/narooma"], ["Bermagui", -36.422, 150.08, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/bermagui"], ["Merimbula", -36.89, 149.92, "Transport for NSW", "free", "", "https://www.nsw.gov.au/driving-boating-and-transport/using-waterways-boating-and-transport-information/conditions-weather-and-tides/webcams/merimbula"], ["Kingscliff surf", -28.262, 153.58, "Swellnet", "sub", "", "https://www.swellnet.com/surfcams/australia/new-south-wales/kingscliff"], ["Cabarita", -28.333, 153.57, "Swellnet", "sub", "", "https://www.swellnet.com/surfcams/australia/new-south-wales/cabarita"], ["Port Macquarie Town Beach", -31.43, 152.92, "Surfline", "sub", "", "https://www.surfline.com/surf-report/port-macquarie/584204204e65fad6a770933b"]], CAMK='';
+  function camPlay(cm){
+    var pl=document.getElementById('cam-player');
+    pl.innerHTML='<div class="cam-frame"><iframe src="'+cm[5]+'" title="Live cam: '+esc(cm[0])+'" loading="lazy" allow="autoplay; fullscreen" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>'
+      +'<div class="cam-cap"><b>'+esc(cm[0])+'</b><span>Live · '+esc(cm[3])+' · <a href="'+cm[6]+'" target="_blank" rel="noopener">Not loading? Open it here ↗</a></span></div>';
+    Array.prototype.forEach.call(document.querySelectorAll('.cam-item'),function(b){ b.classList.toggle('on',b.getAttribute('data-n')===cm[0]); });
+  }
+  function camsFor(lat,lon,name){
+    var sec=document.getElementById('cams'); if(lat==null){ sec.hidden=true; return; }
+    var k=lat.toFixed(3)+','+lon.toFixed(3); if(k===CAMK) return; CAMK=k;
+    var near=CAMS.map(function(c){return {c:c,d:km(lat,lon,c[1],c[2])};}).filter(function(o){return o.d<=60;}).sort(function(a,b){return a.d-b.d;}).slice(0,6);
+    document.getElementById('cams-title').textContent='Surf cams near '+name;
+    var pl=document.getElementById('cam-player'), list=document.getElementById('cam-list'); pl.innerHTML=''; list.innerHTML='';
+    if(!near.length){ sec.hidden=true; if(window.updateJump) window.updateJump(); return; }
+    var firstEmbed=near.filter(function(o){return o.c[5];})[0];
+    near.forEach(function(o){
+      var c=o.c, b=document.createElement(c[5]?'button':'a'); b.className='cam-item'; b.setAttribute('data-n',c[0]);
+      if(c[5]){ b.type='button'; b.onclick=function(){ camPlay(c); }; }
+      else { b.href=c[6]; b.target='_blank'; b.rel='noopener'; }
+      b.innerHTML='<span><b>'+esc(c[0])+'</b><small>'+Math.round(o.d)+' km · '+esc(c[3])+(c[4]==='sub'?' (may need login)':'')+'</small></span><span class="go">'+(c[5]?'Watch here':'Open cam ↗')+'</span>';
+      list.appendChild(b);
+    });
+    if(firstEmbed) camPlay(firstEmbed.c);
+    sec.hidden=false; if(window.updateJump) window.updateJump();
+  }
+
   function renderNav(){
     nav.innerHTML='';
     cities.forEach(function(c){
@@ -406,7 +452,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       });
       h+='</div>'+(hasConf?'':'<!--')+'<div class="legend"><span><i class="conf conf-high"></i>Forecasts agree</span><span><i class="conf conf-medium"></i>Some disagreement</span><span><i class="conf conf-low"></i>Wide disagreement</span></div>'+(hasConf?'':'-->')+'</div>';
     }
-    if(nearNote){ radarCenter(nearNote.lat,nearNote.lon); loadSurf(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); } else { radarCenter(c.lat,c.lon); loadSurf(c.lat,c.lon,c.name); }
+    if(nearNote){ radarCenter(nearNote.lat,nearNote.lon); loadSurf(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); camsFor(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); } else { radarCenter(c.lat,c.lon); loadSurf(c.lat,c.lon,c.name); camsFor(c.lat,c.lon,c.name); }
     h+= nearNote ? radarHTML(nearNote.lat,nearNote.lon,nearNote.town) : radarHTML(c.lat,c.lon,c.name);
     var a=ago(c.updatedAt), old=Date.now()-Date.parse(c.updatedAt)>6*3600000;
     h+='<p class="meta">'+(a?(old?'<span class="stale">Updated '+a+'.</span> Forecasts may be out of date.':'Updated '+a+'.'):'')+(c.source?' Combined from: '+esc(c.source)+'.':'')+'</p>';
