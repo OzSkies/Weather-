@@ -16,6 +16,10 @@ def pick(p, keys):
     low = {k.lower(): v for k, v in p.items()}
     for k in keys:
         v = low.get(k.lower())
+        if isinstance(v, dict):
+            v = v.get("name") or v.get("value") or v.get("title") or ""
+        if isinstance(v, list):
+            v = ", ".join(str(x.get("name", x) if isinstance(x, dict) else x) for x in v)
         if v not in (None, "", [], {}):
             return strip(v) if not isinstance(v, (int, float)) else v
     return ""
@@ -50,6 +54,14 @@ def norm(state, p, xy, link=""):
     typ = pick(p, ["type", "Type", "incidentType", "category2", "eventType", "IncidentType", "feedType"])
     blob_l = (str(typ) + " " + str(title) + " " + blob).lower()
     if not any(w in blob_l for w in ("fire", "burn", "smoke", "bush", "grass", "scrub")):
+        return None
+    x, y = float(xy[0]), float(xy[1])
+    if abs(x) > 180 or abs(y) > 90:
+        import math
+        x = x / 6378137.0 * 180 / math.pi
+        y = (2 * math.atan(math.exp(y / 6378137.0)) - math.pi / 2) * 180 / math.pi
+    xy = [x, y]
+    if not (-45 < y < -9 and 110 < x < 160):
         return None
     return {
         "state": state, "title": title or "Fire", "category": level,
@@ -114,17 +126,20 @@ SOURCES = [
     ("VIC", "https://emergency.vic.gov.au/public/events-geojson.json", "geojson"),
     ("VIC", "https://emergency.vic.gov.au/public/osom-geojson.json", "geojson"),
     ("QLD", "https://publiccontent-gis-psba-qld-gov-au.s3.amazonaws.com/content/Feeds/BushfireCurrentIncidents/bushfireAlert.json", "geojson"),
+    ("SA", "https://www.cfs.sa.gov.au/custom/criimson/CFS_Current_Incidents.json", "list"),
     ("SA", "https://data.eso.sa.gov.au/prod/cfs/criimson/cfs_current_incidents.json", "list"),
-    ("WA", "https://api.emergency.wa.gov.au/v1/incidents", "geojson"),
     ("WA", "https://www.emergency.wa.gov.au/data/incident_FCAD.json", "geojson"),
-    ("TAS", "https://www.fire.tas.gov.au/Show?pageId=colBushfireSummariesRss", "georss"),
+    ("WA", "https://api.emergency.wa.gov.au/v1/incidents", "geojson"),
+    ("WA", "https://api.emergency.wa.gov.au/v1/warnings", "geojson"),
     ("TAS", "https://alert.tas.gov.au/data/data.geojson", "geojson"),
+    ("TAS", "https://alert.tas.gov.au/data/incidents-and-alerts.xml", "georss"),
     ("ACT", "https://www.esa.act.gov.au/feeds/currentincidents.xml", "georss"),
     ("NT", "https://www.pfes.nt.gov.au/incidentmap/json/ntfrsincidents.json", "list"),
 ]
 
 out = {"incidents": [], "hotspots": [], "sources": {}, "errors": []}
 done = set()
+DEBUG = {}
 for state, url, kind in SOURCES:
     if state in done: continue
     try:
@@ -133,7 +148,16 @@ for state, url, kind in SOURCES:
         else:
             data = json.loads(raw)
             items = from_geojson(state, data) if (kind == "geojson" and isinstance(data, dict) and "features" in data) else from_list(state, data)
-        out["incidents"].extend(items); out["sources"][state] = {"url": url, "count": len(items)}; done.add(state)
+        out["incidents"].extend(items); out["sources"][state] = {"url": url, "count": len(items)}
+        if items: done.add(state)
+        try:
+            smp = data if kind != "georss" else None
+            if isinstance(smp, dict) and smp.get("features"): smp = smp["features"][0]
+            elif isinstance(smp, dict): smp = {k: (str(v)[:300]) for k, v in list(smp.items())[:12]}
+            elif isinstance(smp, list): smp = smp[0] if smp else []
+            DEBUG[state + " " + url] = json.dumps(smp)[:1500] if smp is not None else raw[:1500].decode("utf-8", "replace")
+        except Exception as e:
+            DEBUG[state + " " + url] = "debug err %s" % e
     except Exception as e:
         out["errors"].append("%s %s: %s" % (state, url, str(e)[:120]))
 
@@ -167,6 +191,7 @@ try:
 except Exception as e:
     out["errors"].append("hotspots: %s" % str(e)[:120])
 
+json.dump(DEBUG, open("data/fires_debug.json", "w"), indent=1) if os.path.isdir("data") else None
 OUT = "data/fires.json"
 old = None
 if os.path.exists(OUT):
