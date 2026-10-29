@@ -176,6 +176,22 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .hconf b{display:block;font-size:15px}
 .hconf small{display:block;color:var(--muted);font-size:13px}
 .day,.day-head{grid-template-columns:minmax(96px,1.2fr) 28px 34px minmax(56px,2fr) 36px 64px}
+#sec-alerts{scroll-margin-top:64px}
+.al-group{margin-top:10px}
+.al-h{font-size:13px;font-weight:700;color:var(--muted);margin:12px 2px 6px;text-transform:uppercase;letter-spacing:.03em}
+.al-item{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left-width:6px;border-radius:14px;padding:12px 14px;margin-top:8px;color:var(--ink);text-decoration:none}
+.al-item b{display:block;font-size:16px}
+.al-item small{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.al-ic{font-size:22px;line-height:1.2}
+.sev0{border-left-color:#2E8B57}.sev1{border-left-color:#D9B02A}.sev2{border-left-color:#E07B1E}.sev3{border-left-color:#C8322A}
+.al-item.sev3{background:color-mix(in srgb,#C8322A 10%,var(--surface))}
+.watch{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.watch-b{display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-left-width:5px;border-radius:12px;padding:10px 12px;cursor:pointer}
+.watch-b small{color:var(--muted);font-size:13px}
+.off{display:flex;flex-wrap:wrap;gap:8px}
+.off a{font-size:14px;font-weight:700;color:var(--cool);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 12px;text-decoration:none}
+.al-disc{margin:12px 2px 0;font-size:13px;color:var(--muted)}
+.al-disc b{color:var(--ink)}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -287,6 +303,7 @@ body{background:transparent}
   <nav class="jump" id="jump" aria-label="Jump to section">
     <span class="jh">Jump to</span>
     <button type="button" data-t="sec-today">Today</button>
+    <button type="button" data-t="sec-alerts">Alerts</button>
     <button type="button" data-t="hero-tides">Tides</button>
     <button type="button" data-t="sec-week">7-day forecast</button>
     <button type="button" data-t="surf">Surf</button>
@@ -548,6 +565,126 @@ body{background:transparent}
   function wxLoop(){ WX.raf=requestAnimationFrame(wxLoop); if(document.hidden) return; if(REDUCED&&WX.t>2) return; wxDraw(); }
   window.addEventListener('resize',function(){ if(WX.mode){ wxSize(); wxSeed(); WX.t=0; } });
 
+
+  // ---------- Alerts and warnings ----------
+  var ALERTS={key:'',html:'',cache:{},watch:null,watchAt:0,rfs:null,rfsAt:0};
+  var OFFICIAL={
+    NSW:[['NSW SES warnings','https://www.ses.nsw.gov.au/'],['NSW RFS fire danger and bushfires','https://www.rfs.nsw.gov.au/'],['Bureau warnings (NSW)','https://www.bom.gov.au/nsw/warnings/']],
+    ACT:[['ACT Emergency Services Agency','https://esa.act.gov.au/'],['Bureau warnings (ACT and NSW)','https://www.bom.gov.au/nsw/warnings/']],
+    QLD:[['Queensland disaster and SES info','https://www.disaster.qld.gov.au/'],['Queensland Fire Department','https://www.fire.qld.gov.au/'],['Bureau warnings (QLD)','https://www.bom.gov.au/qld/warnings/']],
+    VIC:[['VicEmergency','https://emergency.vic.gov.au/'],['CFA fire danger ratings','https://www.cfa.vic.gov.au/'],['Bureau warnings (VIC)','https://www.bom.gov.au/vic/warnings/']],
+    SA:[['Alert SA','https://www.alert.sa.gov.au/'],['SA Country Fire Service','https://www.cfs.sa.gov.au/'],['Bureau warnings (SA)','https://www.bom.gov.au/sa/warnings/']],
+    WA:[['Emergency WA','https://www.emergency.wa.gov.au/'],['Bureau warnings (WA)','https://www.bom.gov.au/wa/warnings/']],
+    TAS:[['TasALERT','https://www.alert.tas.gov.au/'],['Tasmania Fire Service','https://www.fire.tas.gov.au/'],['Bureau warnings (TAS)','https://www.bom.gov.au/tas/warnings/']],
+    NT:[['SecureNT','https://securent.nt.gov.au/'],['Bureau warnings (NT)','https://www.bom.gov.au/nt/warnings/']]
+  };
+  var HVARS='weather_code,cape,lifted_index,wind_gusts_10m,precipitation,temperature_2m,relative_humidity_2m,wind_speed_10m';
+  function alertKey(c){ return c&&c.lat!=null?c.lat.toFixed(2)+','+c.lon.toFixed(2):''; }
+  function stateOf(c){ return ABBR[c.region]||'NSW'; }
+  function whenLabel(u){ var d=new Date(u*1000), h=d.getHours(), part=h<6?'overnight':h<12?'morning':h<18?'afternoon':'evening', today=new Date();
+    var day=d.toDateString()===today.toDateString()?'today':(new Date(today.getTime()+86400000).toDateString()===d.toDateString()?'tomorrow':d.toLocaleDateString('en-AU',{weekday:'long'}));
+    return day==='today'&&part==='evening'?'tonight':day+' '+part; }
+  function ffdi(T,RH,V){ if(T==null||RH==null||V==null) return 0; return 2*Math.exp(-0.45+0.987*Math.log(10)-0.0345*RH+0.0338*T+0.0234*V); }
+  function fireCat(f){ return f>=100?['Catastrophic','fire-cat']:f>=50?['Extreme','fire-ext']:f>=24?['High','fire-high']:f>=12?['Moderate','fire-mod']:['Low','fire-low']; }
+  function analyse(h){
+    var now=Date.now()/1000, out={storm:null,hail:null,gust:null,rain:null,fire:null}, rain24=0, rainStart=null;
+    for(var i=0;i<h.time.length;i++){
+      var t=h.time[i]; if(t<now-3600||t>now+48*3600) continue;
+      var cape=h.cape?h.cape[i]:null, li=h.lifted_index?h.lifted_index[i]:null, wc=h.weather_code?h.weather_code[i]:null, g=h.wind_gusts_10m?h.wind_gusts_10m[i]:null, pr=h.precipitation?h.precipitation[i]:0;
+      var lvl=0;
+      if(wc>=95) lvl=2; if(cape!=null&&li!=null){ if(cape>=2500&&li<=-5) lvl=Math.max(lvl,3); else if(cape>=1200&&li<=-3) lvl=Math.max(lvl,2); else if(cape>=500&&li<=-1) lvl=Math.max(lvl,1); }
+      if(lvl&&(!out.storm||lvl>out.storm.lvl)) out.storm={lvl:lvl,t:t,cape:cape};
+      if((wc===96||wc===99)&&!out.hail) out.hail={t:t};
+      if(g!=null&&g>=70&&(!out.gust||g>out.gust.g)) out.gust={g:g,t:t};
+      if(pr){ rain24+=pr; if(rainStart==null) rainStart=t; }
+      if(pr>=15&&(!out.rain||pr>out.rain.hr)) out.rain={hr:pr,t:t,total:0};
+      var f=ffdi(h.temperature_2m[i],h.relative_humidity_2m[i],h.wind_speed_10m[i]);
+      if(!out.fire||f>out.fire.f) out.fire={f:f,t:t,T:h.temperature_2m[i],RH:h.relative_humidity_2m[i],V:h.wind_speed_10m[i]};
+    }
+    out.total=rain24; return out;
+  }
+  function itemsFrom(a){
+    var it=[];
+    if(a.storm){ var w=['','Thunderstorms possible','Thunderstorms likely','Severe thunderstorms possible'][a.storm.lvl];
+      it.push({sev:a.storm.lvl>=3?3:a.storm.lvl>=2?2:1,icon:'⛈️',title:w,detail:'Storm energy in the atmosphere peaks '+whenLabel(a.storm.t)+'. Keep an eye on the radar and Bureau warnings.'}); }
+    if(a.hail) it.push({sev:3,icon:'🧊',title:'Hail possible',detail:'Models show thunderstorms with hail '+whenLabel(a.hail.t)+'. Protect cars and outdoor gear.'});
+    if(a.gust) it.push({sev:a.gust.g>=90?3:2,icon:'💨',title:a.gust.g>=90?'Damaging wind gusts possible':'Strong wind gusts',detail:'Gusts to about '+Math.round(a.gust.g)+' km/h '+whenLabel(a.gust.t)+'.'+(a.gust.g>=90?' Secure loose items and avoid trees and powerlines.':'')});
+    if(a.total>=50||a.rain) it.push({sev:a.total>=80||(a.rain&&a.rain.hr>=30)?3:2,icon:'🌧️',title:a.total>=50?'Heavy rain':'Intense downpours',detail:'About '+Math.round(a.total)+' mm over the next 48 hours'+(a.rain?', with bursts of '+Math.round(a.rain.hr)+' mm in an hour '+whenLabel(a.rain.t):'')+'. Flash flooding is possible in low-lying areas. Never drive through floodwater.'});
+    if(a.fire&&a.fire.f>=12){ var fc=fireCat(a.fire.f);
+      it.push({sev:a.fire.f>=50?3:a.fire.f>=24?2:1,icon:'🔥',title:'Fire weather: '+fc[0],detail:'Peaks '+whenLabel(a.fire.t)+' with '+Math.round(a.fire.T)+'°, '+Math.round(a.fire.RH)+'% humidity and '+Math.round(a.fire.V)+' km/h winds. This is an OzSkies estimate assuming dry vegetation, not the official Fire Danger Rating.',fire:true}); }
+    return it.sort(function(x,y){return y.sev-x.sev;});
+  }
+  function rfsNear(c){
+    if(stateOf(c)!=='NSW'&&stateOf(c)!=='ACT'||!ALERTS.rfs) return [];
+    var out=[];
+    (ALERTS.rfs.features||[]).forEach(function(f){
+      var g=f.geometry, co=null; if(!g) return;
+      if(g.type==='Point') co=g.coordinates; else if(g.type==='GeometryCollection'&&g.geometries){ g.geometries.forEach(function(x){ if(x.type==='Point') co=x.coordinates; }); }
+      if(!co) return; var d=km(c.lat,c.lon,co[1],co[0]); if(d>80) return;
+      var p=f.properties||{}, cat=String(p.category||'');
+      out.push({d:d,title:p.title||'Fire',cat:cat,link:p.link||'https://www.rfs.nsw.gov.au/fire-information/fires-near-me'});
+    });
+    return out.sort(function(a,b){return a.d-b.d;}).slice(0,5);
+  }
+  function renderAlerts(c,a){
+    var it=a?itemsFrom(a):[], st=stateOf(c), rf=rfsNear(c), h='';
+    if(rf.length){
+      h+='<div class="al-group"><div class="al-h">🚒 Bushfire incidents within 80 km (NSW RFS)</div>';
+      rf.forEach(function(r){ var lv=/emergency/i.test(r.cat)?3:/watch/i.test(r.cat)?2:1;
+        h+='<a class="al-item sev'+lv+'" href="'+esc(r.link)+'" target="_blank" rel="noopener"><span class="al-ic">🔥</span><span><b>'+esc(r.title)+'</b><small>'+esc(r.cat||'Incident')+' · '+Math.round(r.d)+' km away</small></span></a>'; });
+      h+='</div>';
+    }
+    if(it.length){
+      h+='<div class="al-group"><div class="al-h">Next 48 hours at '+esc(c.name)+'</div>';
+      it.forEach(function(x){ h+='<div class="al-item sev'+x.sev+'"><span class="al-ic">'+x.icon+'</span><span><b>'+esc(x.title)+'</b><small>'+esc(x.detail)+'</small></span></div>'; });
+      h+='</div>';
+    } else if(a){
+      h+='<div class="al-item sev0"><span class="al-ic">✅</span><span><b>No severe weather signals in the next 48 hours</b><small>No storms, damaging winds, heavy rain or high fire weather showing in the forecast models for '+esc(c.name)+'.</small></span></div>';
+    }
+    if(ALERTS.watch&&ALERTS.watch.length){
+      var others=ALERTS.watch.filter(function(w){return w.id!==c.id;});
+      if(others.length){
+        h+='<div class="al-group"><div class="al-h">Areas to keep an eye on</div><div class="watch">';
+        others.forEach(function(w){ h+='<button type="button" class="watch-b sev'+w.sev+'" data-id="'+esc(w.id)+'"><span>'+w.icon+' <b>'+esc(w.name)+'</b></span><small>'+esc(w.what)+'</small></button>'; });
+        h+='</div></div>';
+      }
+    }
+    h+='<div class="al-group"><div class="al-h">Official warnings for '+st+'</div><div class="off">';
+    (OFFICIAL[st]||OFFICIAL.NSW).forEach(function(o){ h+='<a href="'+o[1]+'" target="_blank" rel="noopener">'+esc(o[0])+' ↗</a>'; });
+    h+='<a href="https://www.abc.net.au/emergency" target="_blank" rel="noopener">ABC Emergency ↗</a></div></div>';
+    h+='<p class="al-disc"><b>In an emergency, call 000.</b> OzSkies isn’t an official warning service. Alerts here are estimated from weather models and can miss things. Always follow advice from emergency services and the Bureau of Meteorology.</p>';
+    ALERTS.html=h; ALERTS.key=alertKey(c);
+    var el=document.getElementById('alerts-body'); if(el&&current&&alertKey(current)===ALERTS.key){ el.innerHTML=h; wireWatch(); }
+    if(window.updateJump) window.updateJump();
+  }
+  function wireWatch(){ Array.prototype.forEach.call(document.querySelectorAll('.watch-b'),function(b){ b.onclick=function(){ nearNote=null; select(b.getAttribute('data-id')); window.scrollTo({top:0,behavior:'smooth'}); }; }); }
+  function loadAlerts(c){
+    var k=alertKey(c); if(!k||!window.fetch){ return; }
+    var hit=ALERTS.cache[k];
+    if(hit&&Date.now()-hit.at<30*60000){ renderAlerts(c,hit.a); }
+    else if(!hit||!hit.loading){
+      ALERTS.cache[k]={loading:true,at:0,a:hit&&hit.a};
+      fetch('https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon+'&hourly='+HVARS+'&timezone=auto&timeformat=unixtime&forecast_days=3')
+        .then(function(r){return r.json();}).then(function(d){ var a=d&&d.hourly?analyse(d.hourly):null; ALERTS.cache[k]={at:Date.now(),a:a}; if(current&&alertKey(current)===k) renderAlerts(current,a); })
+        .catch(function(){ ALERTS.cache[k]={at:Date.now(),a:null}; if(current&&alertKey(current)===k) renderAlerts(current,null); });
+    }
+    if(Date.now()-ALERTS.watchAt>60*60000){ ALERTS.watchAt=Date.now(); loadWatch(); }
+    if((stateOf(c)==='NSW'||stateOf(c)==='ACT')&&Date.now()-ALERTS.rfsAt>15*60000){ ALERTS.rfsAt=Date.now();
+      fetch('https://www.rfs.nsw.gov.au/feeds/majorIncidents.json').then(function(r){return r.json();}).then(function(j){ ALERTS.rfs=j; if(current){ var hh=ALERTS.cache[alertKey(current)]; renderAlerts(current,hh&&hh.a); } }).catch(function(){}); }
+    if(ALERTS.html&&ALERTS.key===k){ var el=document.getElementById('alerts-body'); if(el) wireWatch(); }
+  }
+  function loadWatch(){
+    var list=cities.filter(function(c){return c.lat!=null;});
+    fetch('https://api.open-meteo.com/v1/forecast?latitude='+list.map(function(c){return c.lat;}).join(',')+'&longitude='+list.map(function(c){return c.lon;}).join(',')+'&hourly='+HVARS+'&timezone=auto&timeformat=unixtime&forecast_days=3')
+      .then(function(r){return r.json();}).then(function(d){
+        var arr=Array.isArray(d)?d:[d], w=[];
+        arr.forEach(function(o,i){ if(!o||!o.hourly||!list[i]) return; var it=itemsFrom(analyse(o.hourly)).filter(function(x){return x.sev>=2;}); if(!it.length) return;
+          w.push({id:list[i].id,name:list[i].name,sev:it[0].sev,icon:it[0].icon,what:it.map(function(x){return x.title;}).slice(0,2).join(' · ')}); });
+        ALERTS.watch=w.sort(function(a,b){return b.sev-a.sev;});
+        if(current){ var hh=ALERTS.cache[alertKey(current)]; if(hh&&hh.at) renderAlerts(current,hh.a); }
+      }).catch(function(){});
+  }
+
   function renderNav(){
     nav.innerHTML='';
     cities.forEach(function(c){
@@ -591,6 +728,7 @@ body{background:transparent}
       +(c.consensus?'<div class="agree">'+esc(c.consensus)+'</div>':'')
       +'</section>';
     (c.warnings||[]).forEach(function(w){ h+='<div class="alert" role="alert"><strong>'+esc(w.title||'Weather warning')+'</strong>'+(w.detail?'<p>'+esc(w.detail)+'</p>':'')+'</div>'; });
+    h+='<div class="section" id="sec-alerts"><h2>Alerts and warnings</h2><div id="alerts-body">'+(ALERTS.html&&ALERTS.key===alertKey(c)?ALERTS.html:'<p class="near-note">Checking for severe weather…</p>')+'</div></div>';
     if(c.summary) h+='<p class="section" style="margin-bottom:0">'+esc(c.summary)+'</p>';
     var days=c.days||[];
     if(days.length){
@@ -617,6 +755,7 @@ body{background:transparent}
     h+='<p class="meta">'+(a?(old?'<span class="stale">Updated '+a+'.</span> Forecasts may be out of date.':'Updated '+a+'.'):'')+(c.source?' Combined from: '+esc(c.source)+'.':'')+'</p>';
     main.innerHTML=h;
     setWx(wxFor(c));
+    loadAlerts(c);
     fillHeroTides();
     wireRequests();
     wireRadars();
