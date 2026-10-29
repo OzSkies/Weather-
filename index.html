@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="theme-color" id="tc" content="#5BB6F5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="OzSkies">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OzSkies: weather, surf and tides</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -269,6 +273,27 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .fire-detail dd{margin:0;font-size:15px}
 .fd-warn{margin:10px 0 0;font-size:14px}
 @media (max-width:480px){.fire-detail dl{grid-template-columns:1fr}}
+.tb-r{display:flex;gap:8px}
+.bell-btn{background:var(--surface)!important;color:var(--ink)!important;border:1px solid var(--line)}
+.nset{position:fixed;inset:0;z-index:2000;background:rgba(10,20,30,.55);display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 20px) 12px 20px;overflow-y:auto}
+.nset[hidden]{display:none}
+.nset-card{background:var(--surface);color:var(--ink);border-radius:22px;max-width:560px;width:100%;padding:18px 18px 22px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.nset-head{display:flex;justify-content:space-between;align-items:center}
+.nset-head h2{margin:0;font-size:22px}
+.nset-card h3{font-size:15px;margin:18px 0 8px}
+.nset-card h3 small{color:var(--muted);font-weight:400}
+.nset-p{color:var(--muted);font-size:14px;margin:6px 0}
+.ns-chip{display:inline-flex;align-items:center;gap:6px;background:color-mix(in srgb,var(--cool) 12%,var(--surface));border:1px solid var(--line);border-radius:999px;padding:6px 10px;margin:0 6px 6px 0;font-size:14px}
+.ns-chip button{border:0;background:none;color:var(--muted);font:inherit;cursor:pointer;padding:0 2px}
+.ns-search{margin:6px 0 0}
+.ns-search input{padding-left:14px}
+.ns-types{display:flex;flex-direction:column;gap:8px}
+.ns-row{display:flex;align-items:center;gap:10px;font-size:15px}
+.ns-row input{width:20px;height:20px;accent-color:var(--cool)}
+.ns-row select{font:inherit;font-size:15px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.ns-btns{display:flex;gap:8px;flex-wrap:wrap}
+.ns-sec{font:inherit;font-weight:700;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 14px;cursor:pointer}
+.ns-note{font-size:13px;color:var(--muted);display:block;width:100%}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -373,8 +398,28 @@ body{background:transparent}
 </head>
 <body>
 <div id="wx-bg" aria-hidden="true"><canvas id="wx-cv"></canvas><div id="wx-flash"></div></div>
+<div id="nset" class="nset" hidden role="dialog" aria-modal="true" aria-labelledby="nset-h"><div class="nset-card">
+  <div class="nset-head"><h2 id="nset-h">🔔 Major threat alerts</h2><button type="button" id="nset-x" class="fd-x" aria-label="Close">✕</button></div>
+  <p class="nset-p">Get notified only about serious threats: severe storms, hail, damaging winds, heavy rain, extreme fire danger, Total Fire Bans and nearby bushfire warnings.</p>
+  <h3>Where do you live?</h3>
+  <div class="nset-place" id="ns-home"></div>
+  <div class="search ns-search"><input type="search" id="ns-hq" placeholder="Search your town or suburb" autocomplete="off" aria-label="Search your town"></div><div class="results" id="ns-hr" hidden></div>
+  <h3>Also alert me about <small>(up to 5)</small></h3>
+  <div class="ns-extra" id="ns-extra"></div>
+  <div class="search ns-search"><input type="search" id="ns-xq" placeholder="Add another place" autocomplete="off" aria-label="Add another place"></div><div class="results" id="ns-xr" hidden></div>
+  <h3>Alert me about</h3>
+  <div class="ns-types" id="ns-types"></div>
+  <label class="ns-row">Bushfire warnings within <select id="ns-rad"><option value="20">20 km</option><option value="50">50 km</option><option value="100">100 km</option></select></label>
+  <h3>This device</h3>
+  <div class="ns-btns"><button type="button" id="ns-on" class="oplay">Turn on notifications</button><button type="button" id="ns-test" class="ns-sec">Send a test</button></div>
+  <p class="nset-p" id="ns-stat"></p>
+  <h3>Alerts when OzSkies is closed</h3>
+  <p class="nset-p">iPhones and iPads only deliver website alerts while OzSkies is open or recently used. For alerts any time, install the free <b>ntfy</b> app from the App Store, then tap a place below to subscribe. No account needed.</p>
+  <div id="ns-ntfy" class="off"></div>
+  <p class="al-disc"><b>In an emergency, call 000.</b> OzSkies alerts are a helpful extra, not an official warning service. Alerts can be delayed or missed, so always follow official warnings.</p>
+</div></div>
 <div class="wrap" id="top">
-  <div class="topbar"><span class="brand">OzSkies</span><button type="button" id="share" class="share-btn" aria-label="Share OzSkies"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></div>
+  <div class="topbar"><span class="brand">OzSkies</span><span class="tb-r"><button type="button" id="bell" class="share-btn bell-btn" aria-label="Alert settings">🔔 <span id="bell-txt">Alerts</span></button><button type="button" id="share" class="share-btn" aria-label="Share OzSkies"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span></div>
   <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search any Australian town or suburb" autocomplete="off" aria-label="Search any Australian town or suburb"></div>
   <div class="results" id="results" hidden></div>
   <p class="coverage">Search covers <span id="count"></span> Australian places. Every town gets its own forecast.</p>
@@ -1523,7 +1568,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029115823';
+  var APPVER='20261029225909';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
@@ -1534,6 +1579,90 @@ body{background:transparent}
   }
   checkVersion(); setInterval(checkVersion,10*60000);
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) checkVersion(); });
+
+
+  // ---------- Major threat alerts & notifications ----------
+  var NS_TYPES=[['storm','⛈️ Severe thunderstorms',true],['hail','🧊 Hail',true],['wind','💨 Damaging winds',true],['rain','🌧️ Heavy rain and flooding',true],['fdr','🔥 Extreme fire danger and Total Fire Bans',true],['bushfire','🚒 Bushfire warnings nearby (Watch and Act, Emergency)',true]];
+  var WATCHED=['sydney','melbourne','brisbane','perth','adelaide','darwin','canberra','newcastle','cairns','townsville','alice-springs','launceston','pottsville','tweed-heads','byron-bay','port-macquarie','uki','yulara','kingscliff','banora-point','hobart','bicheno','woodenbong','stanthorpe'];
+  var NTFY='ozskies-nn212-';
+  function nsGet(){ try{ return JSON.parse(localStorage.getItem('ozskies-alerts')||'null')||{}; }catch(e){ return {}; } }
+  function nsSave(o){ try{ localStorage.setItem('ozskies-alerts',JSON.stringify(o)); }catch(e){} }
+  function nsPlace(tw){ return {name:tw[0],state:tw[1],lat:tw[2],lon:tw[3]}; }
+  function nsId(p){ var m=cities.filter(function(c){ return norm(c.name)===norm(p.name)&&ABBR[c.region]===p.state; })[0]; return m?m.id:null; }
+  function nsTypes(o){ var t=o.types||{}; NS_TYPES.forEach(function(x){ if(t[x[0]]===undefined) t[x[0]]=x[2]; }); return t; }
+  function nsSearchBox(inp,box,cb){
+    inp.oninput=function(){ var t=norm(inp.value); box.innerHTML=''; if(!t){ box.hidden=true; return; } var n=0;
+      for(var i=0;i<TOWNS.length&&n<6;i++){ if(norm(TOWNS[i][0]).indexOf(t)===0){ (function(tw){ var b=document.createElement('button'); b.type='button'; b.innerHTML=esc(tw[0])+' <small>'+esc(tw[1])+'</small>'; b.onclick=function(){ inp.value=''; box.hidden=true; cb(tw); }; box.appendChild(b); })(TOWNS[i]); n++; } }
+      box.hidden=!n; };
+  }
+  function nsRender(){
+    var o=nsGet(), t=nsTypes(o);
+    document.getElementById('ns-home').innerHTML=o.home?'<span class="ns-chip">🏠 '+esc(o.home.name)+', '+esc(o.home.state)+'</span>':'<span class="nset-p">Not set yet. Search below.</span>';
+    var ex=document.getElementById('ns-extra'); ex.innerHTML='';
+    (o.extra||[]).forEach(function(p,i){ var b=document.createElement('span'); b.className='ns-chip'; b.innerHTML='📍 '+esc(p.name)+', '+esc(p.state)+' <button type="button" aria-label="Remove">✕</button>'; b.querySelector('button').onclick=function(){ o.extra.splice(i,1); nsSave(o); nsRender(); }; ex.appendChild(b); });
+    var ty=document.getElementById('ns-types'); ty.innerHTML='';
+    NS_TYPES.forEach(function(x){ var l=document.createElement('label'); l.className='ns-row'; l.innerHTML='<input type="checkbox"'+(t[x[0]]?' checked':'')+'> '+x[1]; l.querySelector('input').onchange=function(e){ t[x[0]]=e.target.checked; o.types=t; nsSave(o); }; ty.appendChild(l); });
+    document.getElementById('ns-rad').value=String(o.radius||50);
+    var places=[o.home].concat(o.extra||[]).filter(Boolean), nt=document.getElementById('ns-ntfy'); nt.innerHTML='';
+    if(!places.length) nt.innerHTML='<span class="nset-p">Set where you live first.</span>';
+    places.forEach(function(p){ var id=nsId(p);
+      if(id&&WATCHED.indexOf(id)>-1) nt.insertAdjacentHTML('beforeend','<a href="https://ntfy.sh/'+NTFY+id+'" target="_blank" rel="noopener">Subscribe: '+esc(p.name)+' ↗</a>');
+      else nt.insertAdjacentHTML('beforeend','<span class="ns-note">'+esc(p.name)+': closed-app alerts aren’t set up for this place yet. Ask the site owner to add it.</span>'); });
+    var st=document.getElementById('ns-stat'), perm=('Notification' in window)?Notification.permission:'unsupported';
+    var standalone=window.navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches), ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    st.textContent=perm==='granted'?'✅ Notifications are on for this device.':perm==='denied'?'Notifications are blocked. Turn them on for OzSkies in your device Settings.':(ios&&!standalone)?'On iPhone and iPad: first add OzSkies to your Home Screen (Share → Add to Home Screen), open it from there, then turn on notifications.':perm==='unsupported'?'This browser doesn’t support website notifications. Use the ntfy option below.':'Notifications are off.';
+    document.getElementById('bell-txt').textContent=perm==='granted'&&o.home?'On':'Alerts';
+  }
+  function nsNotify(title,body,url,tag){
+    if(!('Notification' in window)||Notification.permission!=='granted') return;
+    var opt={body:body,tag:tag,icon:'icon-192.png',badge:'icon-192.png',data:{url:url}};
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready) navigator.serviceWorker.ready.then(function(r){ r.showNotification(title,opt); }).catch(function(){ try{ new Notification(title,opt); }catch(e){} });
+    else { try{ new Notification(title,opt); }catch(e){} }
+  }
+  function nsCheck(){
+    var o=nsGet(); if(!('Notification' in window)||Notification.permission!=='granted') return;
+    var places=[o.home].concat(o.extra||[]).filter(Boolean); if(!places.length) return;
+    var t=nsTypes(o), rad=o.radius||50, sent={}; try{ sent=JSON.parse(localStorage.getItem('ozskies-sent')||'{}'); }catch(e){}
+    var cut=Date.now()-3*86400000; Object.keys(sent).forEach(function(k){ if(sent[k]<cut) delete sent[k]; });
+    function fire(p,key,title,body){ var k=p.name+'|'+p.state+'|'+key; if(sent[k]) return; sent[k]=Date.now(); try{ localStorage.setItem('ozskies-sent',JSON.stringify(sent)); }catch(e){}
+      var id=nsId(p); nsNotify(title,body,location.pathname+(id?'#'+id:''),k); }
+    fetch('https://api.open-meteo.com/v1/forecast?latitude='+places.map(function(p){return p.lat;}).join(',')+'&longitude='+places.map(function(p){return p.lon;}).join(',')+'&hourly='+HVARS+'&timezone=auto&timeformat=unixtime&forecast_days=3')
+      .then(function(r){return r.json();}).then(function(d){ var arr=Array.isArray(d)?d:[d];
+        arr.forEach(function(x,i){ var p=places[i]; if(!x||!x.hourly||!p) return; var a=analyse(x.hourly), day=new Date().toDateString();
+          if(t.hail&&a.hail) fire(p,'hail|'+day,'🧊 Hail possible at '+p.name,'Thunderstorms with hail are forecast '+whenLabel(a.hail.t)+'. Protect cars and outdoor gear.');
+          else if(t.storm&&a.storm&&a.storm.lvl>=3) fire(p,'storm|'+day,'⛈️ Severe thunderstorms possible at '+p.name,'Very unstable air '+whenLabel(a.storm.t)+' could bring severe storms.');
+          if(t.wind&&a.gust&&a.gust.g>=90) fire(p,'wind|'+day,'💨 Damaging winds at '+p.name,'Gusts to about '+Math.round(a.gust.g)+' km/h '+whenLabel(a.gust.t)+'. Secure loose items.');
+          if(t.rain&&(a.total>=80||(a.rain&&a.rain.hr>=30))) fire(p,'rain|'+day,'🌧️ Heavy rain at '+p.name,'About '+Math.round(a.total)+' mm in the next 48 hours. Flash flooding is possible. Never drive through floodwater.');
+        });
+      }).catch(function(){});
+    if(t.bushfire) fetchFires().then(function(F){ if(!F) return; (F.incidents||[]).forEach(function(x){ var lv=lvlOf(x); if(lv<2) return;
+      places.forEach(function(p){ var dk=km(p.lat,p.lon,x.lat,x.lon); if(dk>rad) return;
+        fire(p,'fire|'+x.title+'|'+x.category,(lv===3?'🚨 EMERGENCY WARNING: ':'⚠️ Watch and Act: ')+x.title,(x.type||'Fire')+', '+Math.round(dk)+' km from '+p.name+'. '+(lv===3?'You may be in danger. Act immediately.':'Conditions are changing. Start taking action.')); }); }); });
+    if(t.fdr) fetchRFS().then(function(R){ if(!R||!R.districts) return;
+      places.filter(function(p){return p.state==='NSW';}).forEach(function(p){ lgaFor({name:p.name,lat:p.lat,lon:p.lon}).then(function(l){ var dist=districtFor(l); if(!dist) return;
+        [['today',/danger.*today|today.*danger/i,/ban.*today|today.*ban/i],['tomorrow',/danger.*tomorrow|tomorrow.*danger/i,/ban.*tomorrow|tomorrow.*ban/i]].forEach(function(dd){
+          var r=String(gk(dist,dd[1])).toUpperCase(), ban=/yes|true/i.test(gk(dist,dd[2])), stamp=dd[0]+'|'+new Date().toDateString();
+          if(r==='EXTREME'||r==='CATASTROPHIC') fire(p,'fdr|'+stamp+'|'+r,'🔥 '+r.charAt(0)+r.slice(1).toLowerCase()+' fire danger '+dd[0]+': '+p.name,r==='CATASTROPHIC'?'For your survival, leave bush fire risk areas.':'Take action now to protect your life and property.');
+          if(ban) fire(p,'toban|'+stamp,'🚫 Total Fire Ban '+dd[0]+': '+p.name,'No fires in the open, including wood and charcoal barbecues.'); }); }); }); });
+  }
+  (function(){
+    var m=document.getElementById('nset');
+    function open(){ nsRender(); m.hidden=false; document.body.style.overflow='hidden'; }
+    function close(){ m.hidden=true; document.body.style.overflow=''; }
+    document.getElementById('bell').onclick=open; document.getElementById('nset-x').onclick=close; m.onclick=function(e){ if(e.target===m) close(); };
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!m.hidden) close(); });
+    nsSearchBox(document.getElementById('ns-hq'),document.getElementById('ns-hr'),function(tw){ var o=nsGet(); o.home=nsPlace(tw); nsSave(o); nsRender(); nsCheck(); });
+    nsSearchBox(document.getElementById('ns-xq'),document.getElementById('ns-xr'),function(tw){ var o=nsGet(); o.extra=o.extra||[]; if(o.extra.length<5) o.extra.push(nsPlace(tw)); nsSave(o); nsRender(); nsCheck(); });
+    document.getElementById('ns-rad').onchange=function(e){ var o=nsGet(); o.radius=+e.target.value; nsSave(o); };
+    document.getElementById('ns-on').onclick=function(){
+      if(!('Notification' in window)){ nsRender(); return; }
+      Notification.requestPermission().then(function(){ nsRender(); if(Notification.permission==='granted'){ nsNotify('🔔 OzSkies alerts are on','You’ll be notified about major threats for your chosen places.',location.pathname,'oz-on'); nsCheck(); } });
+    };
+    document.getElementById('ns-test').onclick=function(){ if(!('Notification' in window)||Notification.permission!=='granted'){ nsRender(); return; } nsNotify('🧪 Test alert from OzSkies','This is what a major threat alert will look like.',location.pathname,'oz-test-'+Date.now()); };
+    if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(function(){});
+    nsRender(); setTimeout(nsCheck,4000); setInterval(nsCheck,15*60000);
+    document.addEventListener('visibilitychange',function(){ if(!document.hidden) nsCheck(); });
+  })();
 
   document.getElementById('count').textContent = TOWNS.length.toLocaleString('en-AU');
   (function(){ var h=location.hash.slice(1);
