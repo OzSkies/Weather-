@@ -252,7 +252,8 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .hs-tog{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);margin:8px 2px 0}
 .hs-tog input{width:18px;height:18px;accent-color:#B3261E}
 .tr-frame{position:relative;width:100%;height:460px;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:var(--surface);margin-top:8px}
-.tr-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tr-frame iframe{position:absolute;left:0;top:0;width:calc(100% / var(--trs,1.35));height:calc(100% / var(--trs,1.35));border:0;transform:scale(var(--trs,1.35));transform-origin:0 0}
+.tr-size{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:14px;color:var(--muted)}
 .tr-seg{margin-top:2px}
 #traffic{scroll-margin-top:64px}
 @media (max-width:480px){.tr-frame{height:380px}}
@@ -406,6 +407,7 @@ body{background:transparent}
   <section class="section" id="traffic">
     <h2 id="traffic-title">Live traffic</h2>
     <div class="seg tr-seg" role="group" aria-label="Traffic map zoom"><button type="button" data-z="14" aria-pressed="false">Streets</button><button type="button" data-z="12" aria-pressed="true">Local</button><button type="button" data-z="10" aria-pressed="false">Region</button><button type="button" data-z="6" aria-pressed="false">Australia</button></div>
+    <div class="tr-size" role="group" aria-label="Icon size"><span>Icon size</span><div class="seg tr-zoom"><button type="button" data-s="1" aria-pressed="false">Normal</button><button type="button" data-s="1.35" aria-pressed="true">Large</button><button type="button" data-s="1.7" aria-pressed="false">Extra large</button></div></div>
     <div class="tr-frame"><iframe id="waze" title="Waze live traffic map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>
     <p class="near-note">Live traffic from Waze, updated in real time by drivers: slow and stopped traffic, crashes, hazards, police, road closures and roadworks. Drag and zoom the map to look anywhere in Australia. Community reports can be incomplete, so always follow official road signs and directions.</p>
   </section>
@@ -928,6 +930,15 @@ body{background:transparent}
       Array.prototype.forEach.call(document.querySelectorAll('.tr-seg button'),function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
       if(TR.lat!=null){ if(TR.z===6){ var a=TR.lat,o=TR.lon; TR.lat=-27.5; TR.lon=134; document.getElementById('waze').src=wazeSrc(); TR.lat=a; TR.lon=o; } else document.getElementById('waze').src=wazeSrc(); } };
   });
+
+
+  (function(){
+    var saved=1.35; try{ saved=+localStorage.getItem('ozskies-trs')||1.35; }catch(e){}
+    function setS(v){ document.querySelector('.tr-frame').style.setProperty('--trs',v);
+      Array.prototype.forEach.call(document.querySelectorAll('.tr-zoom button'),function(x){x.setAttribute('aria-pressed',+x.getAttribute('data-s')===v?'true':'false');}); }
+    setS(saved);
+    Array.prototype.forEach.call(document.querySelectorAll('.tr-zoom button'),function(b){ b.onclick=function(){ var v=+b.getAttribute('data-s'); setS(v); try{ localStorage.setItem('ozskies-trs',v); }catch(e){} }; });
+  })();
 
   function renderNav(){
     nav.innerHTML='';
@@ -1458,7 +1469,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029101030';
+  var APPVER='20261029101238';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
