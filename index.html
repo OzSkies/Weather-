@@ -294,6 +294,13 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .ns-btns{display:flex;gap:8px;flex-wrap:wrap}
 .ns-sec{font:inherit;font-weight:700;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:7px 14px;cursor:pointer}
 .ns-note{font-size:13px;color:var(--muted);display:block;width:100%}
+.ag-seg{margin:10px 0 4px}
+.ag-steps ol{margin:12px 0 6px;padding-left:22px}
+.ag-steps li{margin:0 0 10px;font-size:15px;line-height:1.45}
+.ag-ic{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:0 5px;font-size:13px;background:var(--bg)}
+#ag-install{margin-top:12px}
+.tb-r{flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:520px){.topbar .share-btn span{display:none}.topbar .share-btn{padding:8px 11px}}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -418,8 +425,35 @@ body{background:transparent}
   <div id="ns-ntfy" class="off"></div>
   <p class="al-disc"><b>In an emergency, call 000.</b> OzSkies alerts are a helpful extra, not an official warning service. Alerts can be delayed or missed, so always follow official warnings.</p>
 </div></div>
+<div id="appg" class="nset" hidden role="dialog" aria-modal="true" aria-labelledby="appg-h"><div class="nset-card">
+  <div class="nset-head"><h2 id="appg-h">📲 Get OzSkies as an app</h2><button type="button" id="appg-x" class="fd-x" aria-label="Close">✕</button></div>
+  <p class="nset-p">Add OzSkies to your Home Screen and it opens full-screen like a normal app, with its own icon. It’s free, takes 10 seconds, and needs no app store. It also lets OzSkies send you alert notifications.</p>
+  <div class="seg ag-seg" role="group" aria-label="Your device"><button type="button" data-p="ios" aria-pressed="true">iPhone and iPad</button><button type="button" data-p="android" aria-pressed="false">Android</button></div>
+  <div id="ag-ios" class="ag-steps">
+    <ol>
+      <li>Open OzSkies in <b>Safari</b>. (On iPhone and iPad this works in Safari; other browsers may not offer it.)</li>
+      <li>Tap the <b>Share</b> button <span class="ag-ic">⬆︎</span>. On iPhone it’s at the bottom of the screen; on iPad it’s at the top right.</li>
+      <li>Scroll down and tap <b>Add to Home Screen</b> <span class="ag-ic">⊞</span>. If you don’t see it, tap <b>Edit Actions</b> at the bottom of the list and add it.</li>
+      <li>Check the name says <b>OzSkies</b>, then tap <b>Add</b> at the top right.</li>
+      <li>Find the new <b>OzSkies</b> icon on your Home Screen and open it from there.</li>
+    </ol>
+    <p class="nset-p">Want alerts? Open OzSkies from the Home Screen icon, tap <b>🔔 Alerts</b>, then <b>Turn on notifications</b>.</p>
+  </div>
+  <div id="ag-android" class="ag-steps" hidden>
+    <button type="button" id="ag-install" class="oplay" hidden>Install OzSkies now</button>
+    <ol>
+      <li>Open OzSkies in <b>Chrome</b>.</li>
+      <li>Tap the <b>⋮</b> menu at the top right.</li>
+      <li>Tap <b>Add to Home screen</b> or <b>Install app</b>.</li>
+      <li>Tap <b>Install</b> (or <b>Add</b>) to confirm.</li>
+      <li>Open <b>OzSkies</b> from your Home screen or app drawer.</li>
+    </ol>
+    <p class="nset-p">Using Samsung Internet? Tap the <b>☰</b> menu, then <b>Add page to</b> → <b>Home screen</b>.</p>
+    <p class="nset-p">Want alerts? Open OzSkies from the new icon, tap <b>🔔 Alerts</b>, then <b>Turn on notifications</b>.</p>
+  </div>
+</div></div>
 <div class="wrap" id="top">
-  <div class="topbar"><span class="brand">OzSkies</span><span class="tb-r"><button type="button" id="bell" class="share-btn bell-btn" aria-label="Alert settings">🔔 <span id="bell-txt">Alerts</span></button><button type="button" id="share" class="share-btn" aria-label="Share OzSkies"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span></div>
+  <div class="topbar"><span class="brand">OzSkies</span><span class="tb-r"><button type="button" id="getapp" class="share-btn bell-btn" hidden>📲 <span>Get the app</span></button><button type="button" id="bell" class="share-btn bell-btn" aria-label="Alert settings">🔔 <span id="bell-txt">Alerts</span></button><button type="button" id="share" class="share-btn" aria-label="Share OzSkies"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></span></div>
   <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search any Australian town or suburb" autocomplete="off" aria-label="Search any Australian town or suburb"></div>
   <div class="results" id="results" hidden></div>
   <p class="coverage">Search covers <span id="count"></span> Australian places. Every town gets its own forecast.</p>
@@ -1568,7 +1602,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029225909';
+  var APPVER='20261029230240';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
@@ -1662,6 +1696,25 @@ body{background:transparent}
     if('serviceWorker' in navigator&&location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(function(){});
     nsRender(); setTimeout(nsCheck,4000); setInterval(nsCheck,15*60000);
     document.addEventListener('visibilitychange',function(){ if(!document.hidden) nsCheck(); });
+  })();
+
+
+  // ---------- Get the app guide ----------
+  (function(){
+    var standalone=window.navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+    var btn=document.getElementById('getapp'), m=document.getElementById('appg'), deferred=null;
+    var ua=navigator.userAgent, isAndroid=/Android/i.test(ua);
+    if(!standalone) btn.hidden=false;
+    function pick(pl){ document.getElementById('ag-ios').hidden=pl!=='ios'; document.getElementById('ag-android').hidden=pl!=='android';
+      Array.prototype.forEach.call(document.querySelectorAll('.ag-seg button'),function(b){ b.setAttribute('aria-pressed',b.getAttribute('data-p')===pl?'true':'false'); }); }
+    Array.prototype.forEach.call(document.querySelectorAll('.ag-seg button'),function(b){ b.onclick=function(){ pick(b.getAttribute('data-p')); }; });
+    function open(){ pick(isAndroid?'android':'ios'); m.hidden=false; document.body.style.overflow='hidden'; }
+    function close(){ m.hidden=true; document.body.style.overflow=''; }
+    btn.onclick=open; document.getElementById('appg-x').onclick=close; m.onclick=function(e){ if(e.target===m) close(); };
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!m.hidden) close(); });
+    window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); deferred=e; document.getElementById('ag-install').hidden=false; });
+    document.getElementById('ag-install').onclick=function(){ if(!deferred) return; deferred.prompt(); deferred.userChoice.then(function(){ deferred=null; document.getElementById('ag-install').hidden=true; }); };
+    window.addEventListener('appinstalled',function(){ btn.hidden=true; close(); });
   })();
 
   document.getElementById('count').textContent = TOWNS.length.toLocaleString('en-AU');
