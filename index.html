@@ -251,6 +251,11 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .inc.sev0{border-left-color:#6B7785}.inc.sev1{border-left-color:#E8C21C}
 .hs-tog{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);margin:8px 2px 0}
 .hs-tog input{width:18px;height:18px;accent-color:#B3261E}
+.tr-frame{position:relative;width:100%;height:460px;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:var(--surface);margin-top:8px}
+.tr-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tr-seg{margin-top:2px}
+#traffic{scroll-margin-top:64px}
+@media (max-width:480px){.tr-frame{height:380px}}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -370,6 +375,7 @@ body{background:transparent}
     <button type="button" data-t="surf">Surf</button>
     <button type="button" data-t="ocean-wrap">Ocean map</button>
     <button type="button" data-t="cams">Surf cams</button>
+    <button type="button" data-t="traffic">Traffic</button>
     <button type="button" data-t="sec-rfs">Fires</button>
     <button type="button" data-t="top" class="totop">Back to top ↑</button>
   </nav>
@@ -396,6 +402,12 @@ body{background:transparent}
     <div id="cam-player"></div>
     <div id="cam-list" class="cam-list"></div>
     <p class="near-note">Free cams are Transport for NSW coastal bar cameras, aimed at river and harbour entrances rather than individual surf breaks. Swellnet and Surfline cams open on their own sites and may need a free login or subscription. <a href="https://www.swellnet.com/surfcams" target="_blank" rel="noopener">Browse all Swellnet cams ↗</a></p>
+  </section>
+  <section class="section" id="traffic">
+    <h2 id="traffic-title">Live traffic</h2>
+    <div class="seg tr-seg" role="group" aria-label="Traffic map zoom"><button type="button" data-z="14" aria-pressed="false">Streets</button><button type="button" data-z="12" aria-pressed="true">Local</button><button type="button" data-z="10" aria-pressed="false">Region</button><button type="button" data-z="6" aria-pressed="false">Australia</button></div>
+    <div class="tr-frame"><iframe id="waze" title="Waze live traffic map" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>
+    <p class="near-note">Live traffic from Waze, updated in real time by drivers: slow and stopped traffic, crashes, hazards, police, road closures and roadworks. Drag and zoom the map to look anywhere in Australia. Community reports can be incomplete, so always follow official road signs and directions.</p>
   </section>
   <section class="section" id="sec-rfs"><h2 id="rfs-title">🔥 Bushfires and incidents</h2><div id="rfs-body"><p class="near-note">Loading fire information…</p></div></section>
   <section class="section" id="radar-live" hidden>
@@ -902,6 +914,21 @@ body{background:transparent}
     Promise.all([fetchRFS(),stateOf(c)==='NSW'?lgaFor(c):Promise.resolve(''),fetchFires()]).then(function(r){ if(current&&alertKey(current)===alertKey(c)) renderRFS(c,r[1]); });
   }
 
+
+  // ---------- Live traffic (Waze) ----------
+  var TR={key:'',z:12,lat:null,lon:null};
+  function wazeSrc(){ return 'https://embed.waze.com/iframe?zoom='+TR.z+'&lat='+TR.lat.toFixed(4)+'&lon='+TR.lon.toFixed(4)+'&ct=livemap'; }
+  function trafficFor(lat,lon,name){
+    if(lat==null) return; var k=lat.toFixed(3)+','+lon.toFixed(3); if(k===TR.key) return; TR.key=k; TR.lat=lat; TR.lon=lon;
+    document.getElementById('traffic-title').textContent='Live traffic around '+name;
+    document.getElementById('waze').src=wazeSrc();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.tr-seg button'),function(b){
+    b.onclick=function(){ TR.z=+b.getAttribute('data-z');
+      Array.prototype.forEach.call(document.querySelectorAll('.tr-seg button'),function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+      if(TR.lat!=null){ if(TR.z===6){ var a=TR.lat,o=TR.lon; TR.lat=-27.5; TR.lon=134; document.getElementById('waze').src=wazeSrc(); TR.lat=a; TR.lon=o; } else document.getElementById('waze').src=wazeSrc(); } };
+  });
+
   function renderNav(){
     nav.innerHTML='';
     cities.forEach(function(c){
@@ -967,7 +994,7 @@ body{background:transparent}
       });
       h+='</div>'+(confOf(c)?'<div class="legend"><span><i class="cf cf-high"></i>High confidence</span><span><i class="cf cf-med"></i>Medium</span><span><i class="cf cf-low"></i>Low</span><span class="lg-why">Based on how closely 4 weather models agree and how far ahead the day is.</span></div>':'')+'</div>';
     }
-    if(nearNote){ radarCenter(nearNote.lat,nearNote.lon); loadSurf(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); camsFor(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); } else { radarCenter(c.lat,c.lon); loadSurf(c.lat,c.lon,c.name); camsFor(c.lat,c.lon,c.name); }
+    if(nearNote){ radarCenter(nearNote.lat,nearNote.lon); loadSurf(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); camsFor(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); trafficFor(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); } else { radarCenter(c.lat,c.lon); loadSurf(c.lat,c.lon,c.name); camsFor(c.lat,c.lon,c.name); trafficFor(c.lat,c.lon,c.name); }
     h+= nearNote ? radarHTML(nearNote.lat,nearNote.lon,nearNote.town) : radarHTML(c.lat,c.lon,c.name);
     var a=ago(c.updatedAt), old=Date.now()-Date.parse(c.updatedAt)>6*3600000;
     h+='<p class="meta">'+(a?(old?'<span class="stale">Updated '+a+'.</span> Forecasts may be out of date.':'Updated '+a+'.'):'')+(c.source?' Combined from: '+esc(c.source)+'.':'')+'</p>';
@@ -1431,7 +1458,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029100753';
+  var APPVER='20261029101030';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
