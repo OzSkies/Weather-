@@ -43,18 +43,21 @@ def centre(g):
     xs = [p[0] for p in ring]; ys = [p[1] for p in ring]
     return [sum(xs) / len(xs), sum(ys) / len(ys)]
 
-LEVEL = re.compile(r"emergency warning|watch and act|advice", re.I)
+LEVEL = re.compile(r"emergency[ _-]warning|watch[ _-]and[ _-]act|advice", re.I)
 
 def norm(state, p, xy, link=""):
     title = pick(p, ["title", "sourceTitle", "WarningTitle", "name", "incidentName", "IncidentName", "Location_name", "location", "Locality", "suburb", "Header"])
     cat = pick(p, ["category", "WarningLevel", "warningLevel", "alertLevel", "AlertLevel", "Level", "action", "category1", "cap:severity"])
     blob = " ".join(str(v) for v in p.values() if isinstance(v, (str, int, float)))
     m = LEVEL.search(str(cat)) or LEVEL.search(blob)
-    level = m.group(0).title().replace("And", "and") if m else (str(cat) or "Incident")
+    level = re.sub(r"[_-]", " ", m.group(0)).title().replace("And", "and") if m else (str(cat) or "Incident")
     typ = pick(p, ["type", "Type", "incidentType", "category2", "eventType", "IncidentType", "feedType"])
     blob_l = (str(typ) + " " + str(title) + " " + blob).lower()
     if not any(w in blob_l for w in ("fire", "burn", "smoke", "bush", "grass", "scrub")):
         return None
+    if len(str(title)) < 7:
+        extra = pick(p, ["area", "suburbs", "suburb", "Locality", "location"])
+        if extra and not re.match(r"^-?\d", str(extra)): title = (title or "Fire") + " - " + str(extra)
     x, y = float(xy[0]), float(xy[1])
     if abs(x) > 180 or abs(y) > 90:
         import math
@@ -67,7 +70,7 @@ def norm(state, p, xy, link=""):
         "state": state, "title": title or "Fire", "category": level,
         "status": pick(p, ["status", "Status", "CurrentStatus", "incidentStatus", "statusDescription"]),
         "type": typ, "size": pick(p, ["size", "sizeFmt", "Size", "area", "AreaBurnt", "fireSize"]),
-        "location": pick(p, ["location", "Location_name", "Locality", "locality", "suburb", "address"]),
+        "location": pick(p, ["location", "Location_name", "Locality", "locality", "suburb", "suburbs", "area", "address"]),
         "council": pick(p, ["council", "lga", "LGA", "councilArea"]),
         "agency": pick(p, ["agency", "sourceOrg", "Agency", "responsibleAgency", "controlAgency"]),
         "updated": pick(p, ["updated", "PublishDateLocal_ISO", "lastUpdated", "updatedTime", "pubDate", "Date", "created"]),
@@ -81,6 +84,25 @@ def from_geojson(state, data):
         xy = centre(f.get("geometry"))
         if not xy: continue
         n = norm(state, f.get("properties") or {}, xy, (f.get("properties") or {}).get("link", "") or (f.get("properties") or {}).get("url", ""))
+        if n: out.append(n)
+    return out
+
+def from_wa(state, data):
+    out = []
+    items = []
+    if isinstance(data, dict):
+        for v in data.values():
+            if isinstance(v, list): items.extend(v)
+    for it in items:
+        if not isinstance(it, dict): continue
+        gs = it.get("geo-source") or {}
+        feats = gs.get("features") or []
+        xy = centre(feats[0].get("geometry")) if feats else None
+        if not xy: continue
+        p = {k: v for k, v in it.items() if k != "geo-source"}
+        icon = (feats[0].get("properties") or {}).get("icon-name", "")
+        p["_icon"] = icon
+        n = norm(state, p, xy, "https://www.emergency.wa.gov.au/")
         if n: out.append(n)
     return out
 
@@ -126,15 +148,11 @@ SOURCES = [
     ("VIC", "https://emergency.vic.gov.au/public/events-geojson.json", "geojson"),
     ("VIC", "https://emergency.vic.gov.au/public/osom-geojson.json", "geojson"),
     ("QLD", "https://publiccontent-gis-psba-qld-gov-au.s3.amazonaws.com/content/Feeds/BushfireCurrentIncidents/bushfireAlert.json", "geojson"),
-    ("SA", "https://www.cfs.sa.gov.au/custom/criimson/CFS_Current_Incidents.json", "list"),
-    ("SA", "https://data.eso.sa.gov.au/prod/cfs/criimson/cfs_current_incidents.json", "list"),
-    ("WA", "https://www.emergency.wa.gov.au/data/incident_FCAD.json", "geojson"),
-    ("WA", "https://api.emergency.wa.gov.au/v1/incidents", "geojson"),
-    ("WA", "https://api.emergency.wa.gov.au/v1/warnings", "geojson"),
+    ("WA", "https://api.emergency.wa.gov.au/v1/incidents", "wa"),
+    ("WAW", "https://api.emergency.wa.gov.au/v1/warnings", "wa"),
     ("TAS", "https://alert.tas.gov.au/data/data.geojson", "geojson"),
     ("TAS", "https://alert.tas.gov.au/data/incidents-and-alerts.xml", "georss"),
     ("ACT", "https://www.esa.act.gov.au/feeds/currentincidents.xml", "georss"),
-    ("NT", "https://www.pfes.nt.gov.au/incidentmap/json/ntfrsincidents.json", "list"),
 ]
 
 out = {"incidents": [], "hotspots": [], "sources": {}, "errors": []}
@@ -147,7 +165,9 @@ for state, url, kind in SOURCES:
         if kind == "georss": items = from_georss(state, raw)
         else:
             data = json.loads(raw)
-            items = from_geojson(state, data) if (kind == "geojson" and isinstance(data, dict) and "features" in data) else from_list(state, data)
+            if kind == "wa": items = from_wa(state, data)
+            else: items = from_geojson(state, data) if (kind == "geojson" and isinstance(data, dict) and "features" in data) else from_list(state, data)
+        for i in items: i["state"] = "WA" if state == "WAW" else i["state"]
         out["incidents"].extend(items); out["sources"][state] = {"url": url, "count": len(items)}
         if items: done.add(state)
         try:
