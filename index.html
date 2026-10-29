@@ -843,7 +843,7 @@ body{background:transparent}
       var inc=allInc.map(function(x){ return {x:x,d:km(c.lat,c.lon,x.lat,x.lon)}; }).filter(function(o){return o.d<=100;}).sort(function(a,b){ return lvlOf(b.x)-lvlOf(a.x)||a.d-b.d; }).slice(0,10);
       h+='<div class="al-h">Fire map</div><div class="seg rfs-seg" role="group" aria-label="Fire map area"><button type="button" data-r="near" aria-pressed="'+(RFS.view!=='all')+'">Near '+esc(c.name)+'</button><button type="button" data-r="all" aria-pressed="'+(RFS.view==='all')+'">All Australia</button></div>'
         +'<label class="hs-tog"><input type="checkbox" id="hs-tog"'+(RFS.hot!==false?' checked':'')+'> Satellite heat spots (last 24 hours)</label>'
-        +'<div id="rfs-map-slot"></div><div id="fire-detail" class="fire-detail" hidden></div><div class="rfs-key"><span><i class="kd k3"></i>Emergency Warning</span><span><i class="kd k2"></i>Watch and Act</span><span><i class="kd k1"></i>Advice</span><span><i class="kd k0"></i>Other fire or burn</span><span><i class="kd khs"></i>Satellite heat spot</span><span>Bigger circles are bigger fires · tap a fire for details</span></div>';
+        +'<div id="rfs-map-slot"></div><div id="fire-detail" class="fire-detail" hidden></div><div class="rfs-key"><span><i class="kd k3"></i>Emergency Warning</span><span><i class="kd k2"></i>Watch and Act</span><span><i class="kd k1"></i>Advice</span><span><i class="kd k0"></i>Other fire or burn</span><span><i class="kd khs"></i>Satellite heat spot</span><span>Bigger circles are bigger fires · tap any fire or heat spot for details</span></div>';
       h+='<div class="al-h">Fires and incidents within 100 km ('+inc.length+')</div>';
       if(inc.length){ inc.forEach(function(o){ h+=incHTML(o.x,o.d); }); }
       else h+='<div class="al-item sev0"><span class="al-ic">✅</span><span><b>No fire incidents within 100 km</b><small>Switch the map to All Australia to see fires elsewhere.</small></span></div>';
@@ -887,6 +887,21 @@ body{background:transparent}
     el.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
 
+
+  function showHot(p,c){
+    var el=document.getElementById('fire-detail'); if(!el) return;
+    var t=p[2]?new Date(p[2]+(p[2].length<=16?':00Z':'')):null, near=null, nd=1e9;
+    for(var i=0;i<TOWNS.length;i++){ var tw=TOWNS[i], dy=tw[2]-p[0], dx=tw[3]-p[1]; if(Math.abs(dy)>1.5||Math.abs(dx)>1.5) continue; var d=km(p[0],p[1],tw[2],tw[3]); if(d<nd){nd=d;near=tw;} }
+    el.className='fire-detail sev0 hot';
+    el.innerHTML='<div class="fd-top"><span class="al-ic">🛰️</span><span><b>Satellite heat spot'+(near?' near '+esc(near[0])+', '+esc(near[1]):'')+'</b><small>'+Math.round(km(c.lat,c.lon,p[0],p[1]))+' km from '+esc(c.name)+'</small></span><button type="button" class="fd-x" aria-label="Close">✕</button></div>'
+      +'<dl>'+(t&&!isNaN(t)?'<div><dt>Detected</dt><dd>'+t.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})+', '+t.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+'</dd></div>':'')
+      +(near?'<div><dt>Nearest town</dt><dd>'+esc(near[0])+', '+esc(near[1])+' ('+Math.round(nd)+' km)</dd></div>':'')
+      +'<div><dt>Position</dt><dd>'+p[0].toFixed(3)+', '+p[1].toFixed(3)+'</dd></div><div><dt>Source</dt><dd>Geoscience Australia satellite hotspots</dd></div></dl>'
+      +'<p class="fd-warn">A satellite picked up unusual heat here in the last 24 hours. It could be a bushfire, a planned burn, a farm or industrial fire, or very hot ground. It isn’t an official warning. Check your state fire service for confirmed fires.</p>';
+    el.hidden=false; el.querySelector('.fd-x').onclick=function(){ el.hidden=true; };
+    el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+
   function fireMap(c){
     var slot=document.getElementById('rfs-map-slot'); if(!slot||!window.L||!(RFS.data||FIRES.data)) return;
     if(!FM.el){ FM.el=document.createElement('div'); FM.el.id='rfs-map'; }
@@ -897,9 +912,15 @@ body{background:transparent}
       FM.map.createPane('hotPane'); FM.map.getPane('hotPane').style.zIndex=350; FM.map.getPane('hotPane').style.pointerEvents='none';
       FM.hot=L.layerGroup().addTo(FM.map); FM.layer=L.layerGroup().addTo(FM.map);
       FM.pin=L.circleMarker([c.lat,c.lon],{radius:7,color:'#fff',weight:2,fillColor:'#1C2B36',fillOpacity:1}).addTo(FM.map).bindTooltip(c.name);
+      FM.map.on('click',function(e){
+        if(RFS.hot===false||!FIRES.data||!FIRES.data.hotspots) return;
+        var pt=FM.map.latLngToContainerPoint(e.latlng), best=null, bd=18;
+        FIRES.data.hotspots.forEach(function(h){ var q=FM.map.latLngToContainerPoint([h[0],h[1]]), d=Math.hypot(q.x-pt.x,q.y-pt.y); if(d<bd){bd=d;best=h;} });
+        if(best) showHot(best,FM.cur||c);
+      });
       FM.map.setView([c.lat,c.lon],8);
     }
-    FM.pin.setLatLng([c.lat,c.lon]).setTooltipContent(c.name);
+    FM.cur=c; FM.pin.setLatLng([c.lat,c.lon]).setTooltipContent(c.name);
     FM.layer.clearLayers();
     var col={0:'#6B7785',1:'#E8C21C',2:'#E07B1E',3:'#C8322A'}, pts=[];
     var ALL=(FIRES.data&&FIRES.data.incidents)||(RFS.data&&RFS.data.incidents)||[];
@@ -1502,7 +1523,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029115530';
+  var APPVER='20261029115823';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
