@@ -120,6 +120,20 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .surf-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
 .surf-card b{display:block;font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:22px;font-weight:600}
 .surf-card span{color:var(--muted);font-size:13px}
+.swell-box{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:12px 14px;margin-top:10px}
+.swell-top{display:flex;gap:14px;align-items:center}
+.swell-dial{width:130px;height:130px;flex:0 0 auto}
+.swell-dial .cd{font-size:13px;font-weight:700;fill:var(--muted)}
+.swell-info{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.swell-info b{font-size:16px}
+.swell-info span{color:var(--muted)}
+.key{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.k-sw{background:var(--cool)}.k-cur{background:var(--hot)}
+.swell-chart-wrap{margin-top:12px;overflow-x:auto}
+.swell-chart{width:100%;min-width:480px;height:auto;display:block}
+.swell-chart .sv{font-size:12px;font-weight:700;fill:var(--ink)}
+.swell-chart .st{font-size:12px;fill:var(--muted)}
+@media (max-width:420px){.swell-top{flex-direction:column;align-items:flex-start}}
 .surf-days,.tides{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 14px;margin-top:10px}
 .sd,.td{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
 .sd:first-child,.td:first-child{border-top:0}
@@ -470,6 +484,48 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     return '<svg class="tide-chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" aria-label="Tide height over the next 24 hours"><polyline points="'+pts.join(' ')+'" fill="none" stroke="var(--cool)" stroke-width="3" stroke-linejoin="round"/>'
       +(nx>pad&&nx<W-pad?'<line x1="'+nx.toFixed(1)+'" x2="'+nx.toFixed(1)+'" y1="4" y2="'+(H-4)+'" stroke="var(--hot)" stroke-width="2" stroke-dasharray="4 4"/>':'')+'</svg>';
   }
+
+  function arrowSVG(cx,cy,len,deg,color,w){
+    var a=(deg-90)*Math.PI/180, x2=cx+Math.cos(a)*len, y2=cy+Math.sin(a)*len, x1=cx-Math.cos(a)*len, y1=cy-Math.sin(a)*len;
+    var hl=Math.max(6,len*0.45), a1=a+Math.PI*0.82, a2=a-Math.PI*0.82;
+    return '<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="'+color+'" stroke-width="'+w+'" stroke-linecap="round"/>'
+      +'<path d="M'+x2.toFixed(1)+' '+y2.toFixed(1)+' L'+(x2+Math.cos(a1)*hl).toFixed(1)+' '+(y2+Math.sin(a1)*hl).toFixed(1)+' L'+(x2+Math.cos(a2)*hl).toFixed(1)+' '+(y2+Math.sin(a2)*hl).toFixed(1)+' Z" fill="'+color+'"/>';
+  }
+  function swellHTML(c,h){
+    if(c.swell_wave_direction==null) return '';
+    var to=(c.swell_wave_direction+180)%360, cur=c.ocean_current_velocity, cdir=c.ocean_current_direction;
+    var dial='<svg class="swell-dial" viewBox="0 0 160 160" role="img" aria-label="Swell heading '+dir(to)+'">'
+      +'<circle cx="80" cy="80" r="66" fill="none" stroke="var(--line)" stroke-width="2"/>'
+      +'<text x="80" y="11" text-anchor="middle" class="cd">N</text><text x="154" y="84" text-anchor="middle" class="cd">E</text><text x="80" y="158" text-anchor="middle" class="cd">S</text><text x="6" y="84" text-anchor="middle" class="cd">W</text>'
+      +arrowSVG(80,80,46,to,'var(--cool)',6)
+      +(cur!=null&&cdir!=null&&cur>0.02?arrowSVG(80,80,24,cdir,'var(--hot)',4):'')
+      +'</svg>';
+    var info='<div class="swell-info"><b>Swell from the '+dir(c.swell_wave_direction)+', heading '+dir(to)+'</b>'
+      +'<span>'+f1(c.swell_wave_height)+' m every '+(c.swell_wave_period!=null?Math.round(c.swell_wave_period)+' seconds':'–')+'</span>'
+      +(cur!=null&&cdir!=null?'<span><i class="key k-cur"></i>Ocean current flowing '+dir(cdir)+' at '+(Math.round(cur*10)/10)+' km/h</span>':'')
+      +'<span><i class="key k-sw"></i>Blue arrow shows where the swell is travelling</span></div>';
+    var chart='';
+    if(h&&h.swell_wave_height&&h.time){
+      var now=Date.now(), st=0; for(var i=0;i<h.time.length;i++){ if(new Date(h.time[i]).getTime()>=now-3600000){ st=i; break; } }
+      var pts=[]; for(var j=st;j<h.time.length&&pts.length<16;j+=3){ if(h.swell_wave_height[j]!=null) pts.push(j); }
+      if(pts.length>3){
+        var mx=Math.max.apply(null,pts.map(function(j){return h.swell_wave_height[j];}))||1, W=640,H=170,pl=8,bw=(W-2*pl)/pts.length;
+        var g='';
+        pts.forEach(function(j,k){
+          var v=h.swell_wave_height[j], bh=Math.max(3,(v/mx)*80), x=pl+k*bw, d=new Date(h.time[j]);
+          g+='<rect x="'+(x+bw*0.2).toFixed(1)+'" y="'+(130-bh).toFixed(1)+'" width="'+(bw*0.6).toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="4" fill="var(--cool)" opacity=".35"/>';
+          if(h.swell_wave_direction[j]!=null) g+=arrowSVG(x+bw/2,22,11,(h.swell_wave_direction[j]+180)%360,'var(--cool)',3);
+          g+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(124-bh).toFixed(1)+'" text-anchor="middle" class="sv">'+f1(v)+'</text>';
+          if(k%2===0) g+='<text x="'+(x+bw/2).toFixed(1)+'" y="150" text-anchor="middle" class="st">'+(k===0?'Now':d.toLocaleTimeString('en-AU',{hour:'numeric'}))+'</text>'
+            +(d.getHours()<3||k===0?'<text x="'+(x+bw/2).toFixed(1)+'" y="166" text-anchor="middle" class="st">'+d.toLocaleDateString('en-AU',{weekday:'short'})+'</text>':'');
+        });
+        chart='<div class="swell-chart-wrap"><div class="ht-head"><b>Swell, next 48 hours</b><small>arrows show direction of travel · bars show height (m)</small></div>'
+          +'<svg class="swell-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Swell height and direction for the next 48 hours">'+g+'</svg></div>';
+      }
+    }
+    return '<div class="swell-box"><div class="swell-top">'+dial+info+'</div>'+chart+'</div>';
+  }
+
   function renderSurf(d){
     var sec=document.getElementById('surf'), body=document.getElementById('surf-body');
     document.getElementById('surf-title').textContent='Surf near '+SURF.name;
@@ -480,6 +536,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       +'<div class="surf-card"><b>'+f1(c.swell_wave_height)+' m · '+(c.swell_wave_period!=null?Math.round(c.swell_wave_period)+' s':'–')+'</b><span>Swell from '+dir(c.swell_wave_direction)+'</span></div>'
       +'<div class="surf-card"><b>'+f1(c.wind_wave_height)+' m</b><span>Wind chop from '+dir(c.wind_wave_direction)+'</span></div>'
       +'<div class="surf-card"><b>'+(c.sea_surface_temperature!=null?Math.round(c.sea_surface_temperature)+'°':'–')+'</b><span>Water temperature</span></div></div>';
+    html+=swellHTML(c,h);
     if(dl.time){
       html+='<div class="surf-days">';
       dl.time.slice(0,5).forEach(function(t,i){
@@ -512,8 +569,8 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     if(!force && k===SURF.key) return; SURF.key=k;
     var hit=SURF.cache[k]; if(hit && Date.now()-hit.at<30*60000){ renderSurf(hit.d); return; }
     var url='https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lon
-      +'&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_direction,sea_surface_temperature'
-      +'&hourly=sea_level_height_msl&daily=wave_height_max,swell_wave_direction_dominant,swell_wave_period_max&forecast_days=5&timezone=auto';
+      +'&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,wind_wave_height,wind_wave_direction,sea_surface_temperature,ocean_current_velocity,ocean_current_direction'
+      +'&hourly=sea_level_height_msl,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction&daily=wave_height_max,swell_wave_direction_dominant,swell_wave_period_max&forecast_days=5&timezone=auto';
     fetch(url).then(function(r){return r.json();}).then(function(d){ if(d&&!d.error){ SURF.cache[k]={d:d,at:Date.now()}; if(SURF.key===k) renderSurf(d); } }).catch(function(){});
   }
   setInterval(function(){ if(SURF.key){ var p=SURF.key.split(','); loadSurf(+p[0],+p[1],SURF.name,true); } }, 30*60000);
