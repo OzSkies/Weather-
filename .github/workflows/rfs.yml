@@ -21,6 +21,9 @@ jobs:
       - name: Fetch national fire feeds
         run: python scripts/fires.py
         continue-on-error: true
+      - name: Send major-threat alerts
+        run: python scripts/alerts.py
+        continue-on-error: true
       - name: Save if changed
         run: |
           if [ -n "$(git status --porcelain data)" ]; then
