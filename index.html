@@ -148,18 +148,50 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .ht-item span{color:var(--muted);font-size:12px}
 .ht-item small{color:var(--muted);font-size:12px}
 @media (max-width:420px){.ht-list{grid-template-columns:repeat(2,1fr)}}
+.jump{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;gap:6px;overflow-x:auto;padding:8px 0;margin-bottom:6px;background:var(--bg);scrollbar-width:none}
+.jump::-webkit-scrollbar{display:none}
+.jump button,.side-places button{flex:0 0 auto;font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;text-align:left}
+.jump button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.jump button:focus-visible,.side-places button:focus-visible{outline:3px solid var(--cool);outline-offset:2px}
+.jump .totop{display:none}
+.jh{display:none;font-weight:700;color:var(--muted);font-size:13px;margin:0 0 4px 4px}
+.side-places{display:none}
+#sec-today,#sec-week,#sec-radars,#surf,#radar-live,#hero-tides{scroll-margin-top:64px}
+@media (min-width:1000px){
+  .jump{position:fixed;top:calc(env(safe-area-inset-top,0px) + 110px);left:max(16px,calc(50% - 280px - 210px));width:180px;flex-direction:column;background:transparent;padding:0;margin:0;overflow:visible}
+  .jump button{border-radius:12px;padding:10px 14px;width:100%}
+  .jump .totop{display:block;margin-top:8px;color:var(--muted)}
+  .jh{display:block}
+  .side-places{display:flex;flex-direction:column;gap:6px;position:fixed;top:calc(env(safe-area-inset-top,0px) + 110px);right:max(16px,calc(50% - 280px - 210px));width:180px;max-height:calc(100vh - 140px);overflow-y:auto}
+  .side-places #side-places{display:flex;flex-direction:column;gap:6px}
+  .side-places button{border-radius:12px;padding:10px 14px}
+  .side-places button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  #sec-today,#sec-week,#sec-radars,#surf,#radar-live,#hero-tides{scroll-margin-top:20px}
+  .cities{display:none}
+}
 .coverage{color:var(--muted);font-size:14px;margin:0 2px 10px}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="top">
   <div class="topbar"><span class="brand">OzSkies</span><button type="button" id="share" class="share-btn" aria-label="Share OzSkies"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></div>
   <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search any Australian town or suburb" autocomplete="off" aria-label="Search any Australian town or suburb"></div>
   <div class="results" id="results" hidden></div>
-  <p class="coverage">Search covers <span id="count"></span> Australian places. Towns without their own forecast show the nearest one.</p>
+  <p class="coverage">Search covers <span id="count"></span> Australian places. Every town gets its own forecast.</p>
   <nav class="cities" id="cities" aria-label="Places with forecasts"></nav>
+  <nav class="jump" id="jump" aria-label="Jump to section">
+    <span class="jh">Jump to</span>
+    <button type="button" data-t="sec-today">Today</button>
+    <button type="button" data-t="hero-tides">Tides</button>
+    <button type="button" data-t="sec-week">7-day forecast</button>
+    <button type="button" data-t="surf">Surf</button>
+    <button type="button" data-t="radar-live">Live radar</button>
+    <button type="button" data-t="sec-radars">Radar stations</button>
+    <button type="button" data-t="top" class="totop">Back to top ↑</button>
+  </nav>
+  <aside class="side-places" aria-label="Saved places"><span class="jh">Places</span><div id="side-places"></div></aside>
   <main id="main"></main>
   <section class="section" id="surf" hidden>
     <h2 id="surf-title">Surf and tides</h2>
@@ -210,7 +242,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 
   function radarHTML(lat,lon,label){
     var list=RADARS.map(function(r){return {code:r[0],name:r[1],km:Math.round(km(lat,lon,r[2],r[3]))};}).sort(function(a,b){return a.km-b.km;}).slice(0,3);
-    var h='<div class="section"><h2>Nearest rain radars to '+esc(label)+'</h2><div class="radars">';
+    var h='<div class="section" id="sec-radars"><h2>Nearest rain radars to '+esc(label)+'</h2><div class="radars">';
     list.forEach(function(r,i){
       var rd=RADARS.filter(function(x){return x[0]===r.code;})[0];
       h+='<a class="radar'+(RV.sel===r.code?' active':'')+'" data-code="'+r.code+'" data-lat="'+rd[2]+'" data-lon="'+rd[3]+'" data-name="'+esc(r.name)+'" href="https://www.bom.gov.au/products/IDR'+r.code+'3.loop.shtml" target="_blank" rel="noopener"><span><b>'+esc(r.name)+'</b><small>'+r.km+' km away'+(r.km>256?' · may be out of range':'')+'</small></span><span class="go">'+(RV.map?'Show on map':'Live loop ↗')+'</span></a>';
@@ -226,6 +258,11 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       b.onclick=function(){ nearNote=null; select(c.id); };
       nav.appendChild(b);
     });
+    var side=document.getElementById('side-places'); if(side){ side.innerHTML='';
+      cities.forEach(function(c){ var b=document.createElement('button'); b.type='button'; b.textContent=c.name;
+        b.setAttribute('aria-pressed', current&&current.id===c.id?'true':'false');
+        b.onclick=function(){ nearNote=null; select(c.id); window.scrollTo({top:0,behavior:'smooth'}); }; side.appendChild(b); }); }
+    if(window.updateJump) setTimeout(window.updateJump,0);
   }
 
   function requestButton(place, key){
@@ -242,7 +279,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
         + requestButton(nearNote.town, nearNote.key)+'</div>';
     }
     if(c.live) h+='<div class="live-note">Live forecast for <b>'+esc(c.name)+'</b>, '+esc(c.region)+'. Updates every hour while open.</div>';
-    h+='<section class="hero" data-sky="'+sky(today.icon)+'">'
+    h+='<section class="hero" id="sec-today" data-sky="'+sky(today.icon)+'">'
       +'<h1 class="place">'+esc(c.name)+'</h1><div class="region">'+esc(c.region||'')+'</div>'
       +'<div class="label">Today’s forecast high</div>'
       +'<div class="now"><div class="temp num">'+n(today.high)+'<sup>'+u+'</sup></div><div class="big-icon">'+icon(today.icon)+'</div></div>'
@@ -259,7 +296,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     var days=c.days||[];
     if(days.length){
       var lo=Math.min.apply(null,days.map(function(d){return +d.low;})), hi=Math.max.apply(null,days.map(function(d){return +d.high;}));
-      h+='<div class="section"><h2>'+days.length+'-day forecast</h2><div class="days">';
+      h+='<div class="section" id="sec-week"><h2>'+days.length+'-day forecast</h2><div class="days">';
       days.forEach(function(d){
         var span=hi-lo||1, l=(d.low-lo)/span*100, w=Math.max((d.high-d.low)/span*100,4);
         h+='<div class="day"><span class="d" title="'+esc(d.conf?('Forecast agreement: '+d.conf):'')+'">'+esc(d.day)+(d.conf?'<i class="conf conf-'+esc(d.conf)+'"></i>':'')+'</span>'+icon(d.icon)
@@ -462,7 +499,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
         th+='</div>';
       }
     }
-    SURF.tideHTML=th; SURF.tideKey=SURF.key; fillHeroTides();
+    SURF.tideHTML=th; SURF.tideKey=SURF.key; fillHeroTides(); if(window.updateJump) window.updateJump();
     body.innerHTML=html; sec.hidden=false;
   }
   function fillHeroTides(){
@@ -543,6 +580,30 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){done('Link copied');},function(){prompt('Copy this link:',url);}); return; }
     prompt('Copy this link:',url);
   };
+
+
+  window.updateJump=function(){
+    Array.prototype.forEach.call(document.querySelectorAll('#jump button[data-t]'),function(b){
+      var t=b.getAttribute('data-t'); if(t==='top') return;
+      var el=document.getElementById(t); b.hidden=!el||el.hidden||el.offsetParent===null;
+    });
+    spy();
+  };
+  function spy(){
+    var best=null;
+    Array.prototype.forEach.call(document.querySelectorAll('#jump button[data-t]'),function(b){
+      var t=b.getAttribute('data-t'); if(t==='top'||b.hidden) return;
+      var el=document.getElementById(t); if(el && el.getBoundingClientRect().top<=120) best=b;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#jump button'),function(b){ b.classList.toggle('on',b===best); });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('#jump button[data-t]'),function(b){
+    b.onclick=function(){ var t=b.getAttribute('data-t');
+      if(t==='top'){ window.scrollTo({top:0,behavior:'smooth'}); return; }
+      var el=document.getElementById(t); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); };
+  });
+  window.addEventListener('scroll',function(){ if(!spy.t){ spy.t=setTimeout(function(){ spy.t=null; spy(); },100); } },{passive:true});
+  setInterval(window.updateJump,3000);
 
   document.getElementById('count').textContent = TOWNS.length.toLocaleString('en-AU');
   (function(){ var h=location.hash.slice(1);
