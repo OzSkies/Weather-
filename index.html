@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="theme-color" id="tc" content="#5BB6F5">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>OzSkies: weather, surf and tides</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -241,11 +242,37 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   .cities{display:none}
 }
 .coverage{color:var(--muted);font-size:14px;margin:0 2px 10px}
+
+/* ---------- Weather themes ---------- */
+#wx-bg{position:fixed;inset:0;z-index:-1;background:var(--skygrad,var(--bg));transition:background 1s ease;pointer-events:none}
+#wx-cv{position:absolute;inset:0;width:100%;height:100%}
+#wx-flash{position:absolute;inset:0;background:#fff;opacity:0;transition:opacity .08s}
+body{background:var(--bg);transition:background-color .8s ease,color .5s ease}
+:root:root[data-wx]{--bg:transparent}
+body{background:transparent}
+:root:root[data-wx="sunny"]{color-scheme:light;--surface:#FFFFFF;--ink:#0F2A40;--muted:#46637A;--line:#CFE2F1;--cool:#1F78C1;--warm:#E39A1F;--hot:#D2553A;
+  --skygrad:linear-gradient(180deg,#4FAEF2 0%,#8FCDF7 32%,#D7EDFC 62%,#EEF7FE 100%);--sky-sun:#FFF4D6;--sky-cloud:#EAF2F8;--sky-rain:#E1ECF5;--sky-storm:#DDE2EC;--sky-snow:#F2F7FB;--sky-night:#E1E6F2;--bgsolid:#EEF7FE}
+:root:root[data-wx="partly"]{color-scheme:light;--surface:#FFFFFF;--ink:#14293A;--muted:#4D6375;--line:#D2DEE8;--cool:#2A76B5;--warm:#E39A1F;--hot:#D2553A;
+  --skygrad:linear-gradient(180deg,#78A9D1 0%,#A9C8E2 35%,#DCE8F2 70%,#EDF3F8 100%);--sky-sun:#FBF1DA;--sky-cloud:#E6EEF5;--sky-rain:#DFE9F2;--sky-storm:#DADFE9;--sky-snow:#F1F6FA;--sky-night:#DFE4EF;--bgsolid:#EDF3F8}
+:root:root[data-wx="cloudy"]{color-scheme:light;--surface:#F6F8FA;--ink:#1C2730;--muted:#55636E;--line:#C9D1D8;--cool:#3B78A8;--warm:#C98A2A;--hot:#C2553A;
+  --skygrad:linear-gradient(180deg,#7E8B96 0%,#A7B2BB 35%,#CDD4DA 70%,#DDE2E6 100%);--sky-sun:#EEEAE0;--sky-cloud:#E4E9ED;--sky-rain:#DCE3E9;--sky-storm:#D6DAE2;--sky-snow:#EEF2F5;--sky-night:#DADFE8;--bgsolid:#DDE2E6}
+:root:root[data-wx="rain"]{color-scheme:dark;--surface:#22303B;--ink:#E3EBF1;--muted:#9FB2C1;--line:#33434F;--cool:#7DB9EA;--warm:#E8B35A;--hot:#EE8467;
+  --skygrad:linear-gradient(180deg,#3A4A57 0%,#27353F 40%,#1A252E 100%);--sky-sun:#2C3238;--sky-cloud:#2A3743;--sky-rain:#223443;--sky-storm:#252A3A;--sky-snow:#2A3946;--sky-night:#232A3C;--bgsolid:#1A252E;--alert-bg:#3A221C;--alert:#F29A80}
+:root:root[data-wx="storm"]{color-scheme:dark;--surface:#1D222E;--ink:#E6E9F0;--muted:#9CA4B6;--line:#2E3545;--cool:#8AB4F0;--warm:#F0BC5E;--hot:#F08A6A;
+  --skygrad:linear-gradient(180deg,#2C3042 0%,#1C2030 45%,#11141C 100%);--sky-sun:#2A2C33;--sky-cloud:#262C3A;--sky-rain:#1F2B3A;--sky-storm:#24233A;--sky-snow:#272F3C;--sky-night:#201F34;--bgsolid:#11141C;--alert-bg:#3A1F1C;--alert:#F29A80}
+:root:root[data-wx] .jump{background:var(--bgsolid)}
+@media (min-width:1000px){:root:root[data-wx] .jump{background:transparent}}
+:root:root[data-wx] .share-btn{background:var(--ink);color:var(--surface)}
+:root:root[data-wx] .city-btn[aria-pressed="true"],:root:root[data-wx] .side-places button[aria-pressed="true"],:root:root[data-wx] .jump button.on,:root:root[data-wx] .seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+:root:root[data-wx] .req-btn,:root:root[data-wx] .oplay,:root:root[data-wx] .radar-bar button{color:#fff}
+:root:root[data-wx] .brand{text-shadow:0 1px 8px rgba(255,255,255,.25)}
+:root:root[data-wx="rain"] .brand,:root:root[data-wx="storm"] .brand{text-shadow:none}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </head>
 <body>
+<div id="wx-bg" aria-hidden="true"><canvas id="wx-cv"></canvas><div id="wx-flash"></div></div>
 <div class="wrap" id="top">
   <div class="topbar"><span class="brand">OzSkies</span><button type="button" id="share" class="share-btn" aria-label="Share OzSkies"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></div>
   <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search any Australian town or suburb" autocomplete="off" aria-label="Search any Australian town or suburb"></div>
@@ -443,6 +470,61 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     return '<div class="hconf"><span class="cfb cf-'+f.lvl+'">'+f.score+'%</span><span><b>'+f.word+' in today’s forecast</b><small>'+esc(f.why)+'</small></span></div>';
   }
 
+
+  // ---------- Weather themes ----------
+  var WX={mode:null,drops:[],clouds:[],raf:null,t:0,cv:document.getElementById('wx-cv'),flash:document.getElementById('wx-flash')};
+  var REDUCED=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var TC={sunny:'#4FAEF2',partly:'#78A9D1',cloudy:'#7E8B96',rain:'#3A4A57',storm:'#2C3042'};
+  function wxFor(c){
+    var k=null;
+    if(c&&c.current&&c.current.code!=null) k=wmo(c.current.code)[1];
+    else if(c&&c.today) k=c.today.icon;
+    return {sun:'sunny',partly:'partly',cloud:'cloudy',rain:'rain',storm:'storm'}[k]||'partly';
+  }
+  function setWx(mode){
+    if(mode===WX.mode) return; WX.mode=mode;
+    document.documentElement.setAttribute('data-wx',mode);
+    var tc=document.getElementById('tc'); if(tc) tc.setAttribute('content',TC[mode]);
+    wxSize(); wxSeed();
+    if(!WX.raf) wxLoop();
+  }
+  function wxSize(){ var c=WX.cv, d=window.devicePixelRatio||1; c.width=innerWidth*d; c.height=innerHeight*d; c.getContext('2d').setTransform(d,0,0,d,0,0); }
+  function wxSeed(){
+    var W=innerWidth,H=innerHeight, m=WX.mode; WX.drops=[]; WX.clouds=[];
+    var nd=m==='storm'?Math.round(W*H/2600):m==='rain'?Math.round(W*H/4200):0;
+    for(var i=0;i<nd;i++) WX.drops.push({x:Math.random()*W*1.2,y:Math.random()*H,l:10+Math.random()*16,v:(m==='storm'?14:10)+Math.random()*6,a:.15+Math.random()*.35});
+    var nc=m==='cloudy'?9:m==='partly'?5:m==='rain'?6:m==='storm'?7:2;
+    for(var j=0;j<nc;j++) WX.clouds.push({x:Math.random()*W,y:Math.random()*H*0.55,r:90+Math.random()*160,v:.08+Math.random()*.18,a:m==='sunny'?.35:m==='partly'?.5:.38});
+  }
+  function cloud(ctx,c,col){
+    for(var k=0;k<4;k++){ var ox=(k-1.5)*c.r*.55, oy=(k%2?-.18:.1)*c.r, rr=c.r*(k%2?.75:.6);
+      var g=ctx.createRadialGradient(c.x+ox,c.y+oy,0,c.x+ox,c.y+oy,rr); g.addColorStop(0,col.replace('A',c.a)); g.addColorStop(1,col.replace('A',0));
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(c.x+ox,c.y+oy,rr,0,Math.PI*2); ctx.fill(); }
+  }
+  function wxDraw(){
+    var ctx=WX.cv.getContext('2d'), W=innerWidth, H=innerHeight, m=WX.mode; WX.t++;
+    ctx.clearRect(0,0,W,H);
+    if(m==='sunny'||m==='partly'){
+      var sx=W*0.82, sy=H*0.08, pulse=REDUCED?0:Math.sin(WX.t/90)*8;
+      var g=ctx.createRadialGradient(sx,sy,0,sx,sy,260+pulse); g.addColorStop(0,'rgba(255,248,214,'+(m==='sunny'?.95:.6)+')'); g.addColorStop(.25,'rgba(255,236,170,'+(m==='sunny'?.45:.25)+')'); g.addColorStop(1,'rgba(255,236,170,0)');
+      ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      if(m==='sunny'){ ctx.save(); ctx.translate(sx,sy); ctx.rotate(REDUCED?0:WX.t/2400); ctx.fillStyle='rgba(255,250,225,.10)';
+        for(var r=0;r<12;r++){ ctx.rotate(Math.PI/6); ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(560,-28); ctx.lineTo(560,28); ctx.closePath(); ctx.fill(); } ctx.restore(); }
+    }
+    var cc=(m==='rain'||m==='storm')?'rgba(120,135,150,A)':m==='cloudy'?'rgba(245,247,250,A)':'rgba(255,255,255,A)';
+    WX.clouds.forEach(function(c){ if(!REDUCED){ c.x+=c.v; if(c.x-c.r*2>W) c.x=-c.r*2; } cloud(ctx,c,cc); });
+    if(WX.drops.length){
+      ctx.lineCap='round'; ctx.lineWidth=m==='storm'?1.6:1.2;
+      WX.drops.forEach(function(d){
+        ctx.strokeStyle='rgba(190,215,240,'+d.a+')'; ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x-d.l*0.28,d.y+d.l); ctx.stroke();
+        if(!REDUCED){ d.y+=d.v; d.x-=d.v*0.28; if(d.y>H){ d.y=-20; d.x=Math.random()*W*1.2; } }
+      });
+    }
+    if(m==='storm'&&!REDUCED&&Math.random()<0.004){ var f=WX.flash; f.style.opacity=.35; setTimeout(function(){f.style.opacity=0;},90); setTimeout(function(){f.style.opacity=.2;},180); setTimeout(function(){f.style.opacity=0;},260); }
+  }
+  function wxLoop(){ WX.raf=requestAnimationFrame(wxLoop); if(document.hidden) return; if(REDUCED&&WX.t>2) return; wxDraw(); }
+  window.addEventListener('resize',function(){ if(WX.mode){ wxSize(); wxSeed(); WX.t=0; } });
+
   function renderNav(){
     nav.innerHTML='';
     cities.forEach(function(c){
@@ -511,6 +593,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     var a=ago(c.updatedAt), old=Date.now()-Date.parse(c.updatedAt)>6*3600000;
     h+='<p class="meta">'+(a?(old?'<span class="stale">Updated '+a+'.</span> Forecasts may be out of date.':'Updated '+a+'.'):'')+(c.source?' Combined from: '+esc(c.source)+'.':'')+'</p>';
     main.innerHTML=h;
+    setWx(wxFor(c));
     fillHeroTides();
     wireRequests();
     wireRadars();
@@ -905,7 +988,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       +(wet&&wet.rain>=40?' Rain is most likely on '+(wet.day==='Today'?'today':wet.day)+' ('+Math.round(wet.rain)+'%).':' Mostly dry over the coming days.')
       +(uv>=11?' Extreme UV is forecast in the next few days.':'');
     return {id:'t-'+slug(tw[0]+' '+tw[1]),name:tw[0],region:FULL[tw[1]]||tw[1],lat:tw[2],lon:tw[3],live:true,units:'C',updatedAt:new Date().toISOString(),
-      current:{humidity:cu.relative_humidity_2m,wind:cu.wind_speed_10m!=null?dir(cu.wind_direction_10m)+' '+Math.round(cu.wind_speed_10m)+' km/h':null,feels:cu.apparent_temperature},
+      current:{code:cu.weather_code,humidity:cu.relative_humidity_2m,wind:cu.wind_speed_10m!=null?dir(cu.wind_direction_10m)+' '+Math.round(cu.wind_speed_10m)+' km/h':null,feels:cu.apparent_temperature},
       consensus:'Live computer-model forecast for this exact spot, refreshed every hour. It blends the Bureau of Meteorology’s ACCESS model with other global models. It isn’t checked by a forecaster, so it can differ a little from official Bureau forecasts.',
       source:'Open-Meteo (Bureau of Meteorology ACCESS and other models)',extra:parseExtra(dl),summary:summary,warnings:[],days:days,
       today:{high:t.high,low:t.low,rain:t.rain,condition:t.condition,icon:t.icon}};
