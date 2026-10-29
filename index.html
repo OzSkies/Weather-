@@ -576,7 +576,7 @@ body{background:transparent}
         + (nearNote.km>150?'<p class="near-note">That’s a long way, so conditions may differ a lot.</p>':'')
         + requestButton(nearNote.town, nearNote.key)+'</div>';
     }
-    if(c.live) h+='<div class="live-note">Live forecast for <b>'+esc(c.name)+'</b>, '+esc(c.region)+'. Updates every hour while open.</div>';
+    if(c.live) h+='<div class="live-note">Live forecast for <b>'+esc(c.name)+'</b>, '+esc(c.region)+'. Updates automatically every hour.</div>';
     h+='<section class="hero" id="sec-today" data-sky="'+sky(today.icon)+'">'
       +'<h1 class="place">'+esc(c.name)+'</h1><div class="region">'+esc(c.region||'')+'</div>'
       +'<div class="label">Today’s forecast high</div>'
@@ -637,8 +637,9 @@ body{background:transparent}
 
   function select(id){
     current=cities.find(function(c){return c.id===id;})||cities[0];
-    if(current.pinLive){ var pin=current, nr=nearest(pin.lat,pin.lon);
-      openTown([pin.name,ABBR[pin.region],pin.lat,pin.lon],function(){ nearNote={town:pin.name+', '+ABBR[pin.region],km:nr.km,lat:pin.lat,lon:pin.lon,key:pin.id}; current=nr.city; renderNav(); renderCity(nr.city); },pin.id);
+    var stale=current.days&&current.updatedAt&&(Date.now()-Date.parse(current.updatedAt)>3*3600000);
+    if(current.pinLive||stale){ var pin=current, nr=nearest(pin.lat,pin.lon);
+      openTown([pin.name,ABBR[pin.region],pin.lat,pin.lon],function(){ if(pin.days){ current=pin; renderNav(); renderCity(pin); return; } nearNote={town:pin.name+', '+ABBR[pin.region],km:nr.km,lat:pin.lat,lon:pin.lon,key:pin.id}; current=nr.city; renderNav(); renderCity(nr.city); },pin.id);
       return; }
     renderNav(); renderCity(current);
     if(location.hash!=='#'+current.id) history.replaceState(null,'','#'+current.id);
