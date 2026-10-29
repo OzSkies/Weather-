@@ -132,6 +132,20 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .radar-bar button{font:inherit;font-weight:700;color:var(--bg);background:var(--cool);border:0;border-radius:10px;padding:6px 12px;cursor:pointer}
 #rtime{color:var(--muted);font-size:14px}
 .live-note{background:color-mix(in srgb,var(--cool) 10%,var(--surface));border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin-bottom:12px;font-size:15px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin:4px 0 10px}
+.brand{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:22px}
+.share-btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:700;color:var(--bg);background:var(--ink);border:0;border-radius:999px;padding:8px 14px;cursor:pointer}
+.share-btn svg{width:18px;height:18px}
+.share-btn:focus-visible{outline:3px solid var(--cool);outline-offset:2px}
+.hero-tides{margin-top:16px;background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:16px;padding:10px 12px 12px}
+.ht-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ht-head small{color:var(--muted);font-size:12px}
+.hero-tides .tide-chart{height:80px;margin-top:6px}
+.ht-list{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.ht-item{display:flex;flex-direction:column;font-size:14px}
+.ht-item span{color:var(--muted);font-size:12px}
+.ht-item small{color:var(--muted);font-size:12px}
+@media (max-width:420px){.ht-list{grid-template-columns:repeat(2,1fr)}}
 .coverage{color:var(--muted);font-size:14px;margin:0 2px 10px}
 </style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -139,6 +153,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 </head>
 <body>
 <div class="wrap">
+  <div class="topbar"><span class="brand">Weather</span><button type="button" id="share" class="share-btn" aria-label="Share this weather site"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button></div>
   <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="q" type="search" placeholder="Search any Australian town or suburb" autocomplete="off" aria-label="Search any Australian town or suburb"></div>
   <div class="results" id="results" hidden></div>
   <p class="coverage">Search covers <span id="count"></span> Australian places. Towns without their own forecast show the nearest one.</p>
@@ -147,7 +162,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   <section class="section" id="surf" hidden>
     <h2 id="surf-title">Surf and tides</h2>
     <div id="surf-body"></div>
-    <p class="near-note">Surf and tide data from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> marine forecasts, updated every 30 minutes. Wave models are less precise right at the shore, and tide times can be out by up to half an hour. For boating, check official Bureau of Meteorology tide tables.</p>
+    <p class="near-note">Surf and tide data (tides are shown at the top with the forecast) from <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> marine forecasts, updated every 30 minutes. Wave models are less precise right at the shore, and tide times can be out by up to half an hour. For boating, check official Bureau of Meteorology tide tables.</p>
   </section>
   <section class="section" id="radar-live" hidden>
     <h2>Live rain radar</h2>
@@ -231,6 +246,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       +'<div class="facts"><div class="fact"><b>'+n(today.rain)+'%</b><span>Chance of rain</span></div>'
       +'<div class="fact"><b>'+esc(cur.wind||'–')+'</b><span>Wind</span></div>'
       +'<div class="fact"><b>'+(cur.humidity!=null?n(cur.humidity)+'%':'–')+'</b><span>Humidity</span></div></div>'
+      +'<div id="hero-tides" class="hero-tides" hidden></div>'
       +(c.consensus?'<div class="agree">'+esc(c.consensus)+'</div>':'')
       +'</section>';
     (c.warnings||[]).forEach(function(w){ h+='<div class="alert" role="alert"><strong>'+esc(w.title||'Weather warning')+'</strong>'+(w.detail?'<p>'+esc(w.detail)+'</p>':'')+'</div>'; });
@@ -252,6 +268,7 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
     var a=ago(c.updatedAt), old=Date.now()-Date.parse(c.updatedAt)>6*3600000;
     h+='<p class="meta">'+(a?(old?'<span class="stale">Updated '+a+'.</span> Forecasts may be out of date.':'Updated '+a+'.'):'')+(c.source?' Combined from: '+esc(c.source)+'.':'')+'</p>';
     main.innerHTML=h;
+    fillHeroTides();
     wireRequests();
     wireRadars();
   }
@@ -396,9 +413,9 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   }
   function renderSurf(d){
     var sec=document.getElementById('surf'), body=document.getElementById('surf-body');
-    document.getElementById('surf-title').textContent='Surf and tides near '+SURF.name;
+    document.getElementById('surf-title').textContent='Surf near '+SURF.name;
     var c=d.current||{}, h=d.hourly||{}, dl=d.daily||{};
-    if(c.wave_height==null){ body.innerHTML='<p class="near-note">No surf or tide data here, as this spot is too far from the open ocean. Search a nearby beach town instead.</p>'; sec.hidden=false; return; }
+    if(c.wave_height==null){ SURF.tideHTML=''; SURF.tideKey=SURF.key; fillHeroTides(); body.innerHTML='<p class="near-note">No surf or tide data here, as this spot is too far from the open ocean. Search a nearby beach town instead.</p>'; sec.hidden=false; return; }
     var html='<div class="surf-grid">'
       +'<div class="surf-card"><b>'+f1(c.wave_height)+' m<span class="surf-label">'+surfLabel(c.wave_height)+'</span></b><span>Wave height now</span></div>'
       +'<div class="surf-card"><b>'+f1(c.swell_wave_height)+' m · '+(c.swell_wave_period!=null?Math.round(c.swell_wave_period)+' s':'–')+'</b><span>Swell from '+dir(c.swell_wave_direction)+'</span></div>'
@@ -411,18 +428,24 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
       });
       html+='</div>';
     }
+    var th='';
     if(h.sea_level_height_msl){
-      var now=Date.now(), ext=tideExtremes(h.time,h.sea_level_height_msl).filter(function(x){return x.time>now-3600000;}).slice(0,6);
+      var now=Date.now(), ext=tideExtremes(h.time,h.sea_level_height_msl).filter(function(x){return x.time>now-1800000;}).slice(0,4);
       var startIdx=0; for(var i=0;i<h.time.length;i++){ if(new Date(h.time[i]).getTime()>=now-3*3600000){ startIdx=i; break; } }
-      html+='<h2 style="margin-top:18px">Tides</h2>'+tideSVG(h.time.slice(startIdx),h.sea_level_height_msl.slice(startIdx),ext);
+      th='<div class="ht-head"><b>Tides</b><small>next 24 hours · dashed line is now</small></div>'+tideSVG(h.time.slice(startIdx),h.sea_level_height_msl.slice(startIdx),ext);
       if(ext.length){
-        html+='<div class="tides">';
-        ext.forEach(function(x){ var dd=new Date(x.time);
-          html+='<div class="td"><span><b>'+(x.hi?'High':'Low')+'</b> <small>'+dd.toLocaleDateString('en-AU',{weekday:'short'})+'</small></span><span>'+dd.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+' <small>· '+(x.h>=0?'+':'')+x.h.toFixed(2)+' m</small></span></div>'; });
-        html+='</div>';
+        th+='<div class="ht-list">';
+        ext.forEach(function(x){ var dd=new Date(x.time), today=dd.toDateString()===new Date().toDateString();
+          th+='<div class="ht-item"><span>'+(x.hi?'High':'Low')+'</span><b>'+dd.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+'</b><small>'+(today?'':dd.toLocaleDateString('en-AU',{weekday:'short'})+' · ')+(x.h>=0?'+':'')+x.h.toFixed(1)+' m</small></div>'; });
+        th+='</div>';
       }
     }
+    SURF.tideHTML=th; SURF.tideKey=SURF.key; fillHeroTides();
     body.innerHTML=html; sec.hidden=false;
+  }
+  function fillHeroTides(){
+    var el=document.getElementById('hero-tides'); if(!el) return;
+    var ok=SURF.tideHTML && SURF.tideKey===SURF.key; el.innerHTML=ok?SURF.tideHTML:''; el.hidden=!ok;
   }
   function loadSurf(lat,lon,name,force){
     if(!window.fetch) return;
@@ -488,6 +511,16 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
   setInterval(function(){ if(current&&current.live){ var tw=[current.name,null,current.lat,current.lon];
     for(var k in LIVE.cache){ if(LIVE.cache[k].c===current){ var p=k.split('|'); tw[1]=p[1]; delete LIVE.cache[k]; openTown(tw,function(){}); break; } } } }, 60*60000);
 
+
+
+  document.getElementById('share').onclick=function(){
+    var btn=this, url=location.href, place=current?current.name:'';
+    var data={title:'Weather',text:place?('Weather, surf and tides for '+place):'Weather, surf and tides for anywhere in Australia',url:url};
+    function done(msg){ var t=btn.innerHTML; btn.textContent=msg; setTimeout(function(){btn.innerHTML=t;},2000); }
+    if(navigator.share){ navigator.share(data).catch(function(){}); return; }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(function(){done('Link copied');},function(){prompt('Copy this link:',url);}); return; }
+    prompt('Copy this link:',url);
+  };
 
   document.getElementById('count').textContent = TOWNS.length.toLocaleString('en-AU');
   (function(){ var h=location.hash.slice(1);
