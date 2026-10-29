@@ -192,6 +192,28 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 .off a{font-size:14px;font-weight:700;color:var(--cool);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:8px 12px;text-decoration:none}
 .al-disc{margin:12px 2px 0;font-size:13px;color:var(--muted)}
 .al-disc b{color:var(--ink)}
+#sec-rfs{scroll-margin-top:64px}
+.rfs-logo{display:inline-block;background:#C8322A;color:#fff;font-size:12px;font-weight:800;padding:3px 7px;border-radius:6px;vertical-align:3px;margin-right:4px;letter-spacing:.04em}
+.rfs-dist{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.rfs-dist label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.rfs-dist select{font:inherit;font-size:16px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.rfs-dist small{color:var(--muted);font-size:12px}
+.fdr-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fdr{border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:4px;border:1px solid rgba(0,0,0,.08)}
+.fdr b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:26px;font-weight:800;line-height:1.1}
+.fdr small{font-size:14px}
+.fdr-when{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.8}
+.fdr-none{background:#FFFFFF;color:#1d1d1d}
+.fdr-mod{background:#64BF30;color:#0f2a05}
+.fdr-high{background:#FEDD3A;color:#2b2400}
+.fdr-ext{background:#F78100;color:#2a1300}
+.fdr-cat{background:#AD0909;color:#fff}
+.toban{margin-top:6px;align-self:flex-start;background:#AD0909;color:#fff;font-weight:800;font-size:12px;padding:4px 8px;border-radius:6px;letter-spacing:.04em}
+.noban{margin-top:6px;font-size:12px;opacity:.75}
+.toban-note{font-size:14px;margin:10px 2px 0}
+.lvl{display:inline-block;font-weight:700;font-size:11px;padding:2px 6px;border-radius:5px;margin-right:4px;color:#fff}
+.lvl1{background:#2F6FA3}.lvl2{background:#E07B1E}.lvl3{background:#C8322A}
+@media (max-width:420px){.fdr-row{grid-template-columns:1fr}}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -304,6 +326,7 @@ body{background:transparent}
     <span class="jh">Jump to</span>
     <button type="button" data-t="sec-today">Today</button>
     <button type="button" data-t="sec-alerts">Alerts</button>
+    <button type="button" data-t="sec-rfs">Fire danger</button>
     <button type="button" data-t="hero-tides">Tides</button>
     <button type="button" data-t="sec-week">7-day forecast</button>
     <button type="button" data-t="surf">Surf</button>
@@ -615,6 +638,7 @@ body{background:transparent}
     return it.sort(function(x,y){return y.sev-x.sev;});
   }
   function rfsNear(c){
+    return [];
     if(stateOf(c)!=='NSW'&&stateOf(c)!=='ACT'||!ALERTS.rfs) return [];
     var out=[];
     (ALERTS.rfs.features||[]).forEach(function(f){
@@ -669,7 +693,7 @@ body{background:transparent}
         .catch(function(){ ALERTS.cache[k]={at:Date.now(),a:null}; if(current&&alertKey(current)===k) renderAlerts(current,null); });
     }
     if(Date.now()-ALERTS.watchAt>60*60000){ ALERTS.watchAt=Date.now(); loadWatch(); }
-    if((stateOf(c)==='NSW'||stateOf(c)==='ACT')&&Date.now()-ALERTS.rfsAt>15*60000){ ALERTS.rfsAt=Date.now();
+    if(false){ ALERTS.rfsAt=Date.now();
       fetch('https://www.rfs.nsw.gov.au/feeds/majorIncidents.json').then(function(r){return r.json();}).then(function(j){ ALERTS.rfs=j; if(current){ var hh=ALERTS.cache[alertKey(current)]; renderAlerts(current,hh&&hh.a); } }).catch(function(){}); }
     if(ALERTS.html&&ALERTS.key===k){ var el=document.getElementById('alerts-body'); if(el) wireWatch(); }
   }
@@ -683,6 +707,88 @@ body{background:transparent}
         ALERTS.watch=w.sort(function(a,b){return b.sev-a.sev;});
         if(current){ var hh=ALERTS.cache[alertKey(current)]; if(hh&&hh.at) renderAlerts(current,hh.a); }
       }).catch(function(){});
+  }
+
+
+  // ---------- NSW RFS ----------
+  var RFS={key:'',html:'',data:null,at:0,lga:{},loading:false,src:''};
+  var RFS_RAW='https://raw.githubusercontent.com/NuggetNut212/Weather-/main/data/rfs.json';
+  var FDR={
+    'NO RATING':['No rating','fdr-none','No fire danger rating is issued. Stay up to date.'],
+    'NONE':['No rating','fdr-none','No fire danger rating is issued. Stay up to date.'],
+    'MODERATE':['Moderate','fdr-mod','Plan and prepare.'],
+    'HIGH':['High','fdr-high','Be ready to act.'],
+    'EXTREME':['Extreme','fdr-ext','Take action now to protect your life and property.'],
+    'CATASTROPHIC':['Catastrophic','fdr-cat','For your survival, leave bush fire risk areas.']
+  };
+  function fdrOf(v){ v=String(v||'').toUpperCase().trim(); if(!v||v==='NIL'||v==='N/A') v='NONE'; return FDR[v]||[v.charAt(0)+v.slice(1).toLowerCase(),'fdr-none','Check the RFS for details.']; }
+  function gk(d,re){ for(var k in d){ if(re.test(k)) return d[k]; } return ''; }
+  function normC(t){ return String(t||'').toLowerCase().replace(/\(.*?\)/g,'').replace(/\b(shire|city|council|municipal|municipality|regional|of|the|area|lga)\b/g,'').replace(/[^a-z]/g,''); }
+  function fetchRFS(){
+    if(RFS.loading||(RFS.data&&Date.now()-RFS.at<15*60000)) return Promise.resolve(RFS.data);
+    RFS.loading=true;
+    return fetch(RFS_RAW+'?t='+Math.floor(Date.now()/300000),{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){ RFS.data=j; RFS.at=Date.now(); RFS.src='relay'; RFS.loading=false; return j; })
+      .catch(function(){ RFS.loading=false; return null; });
+  }
+  function lgaFor(c){
+    var k=c.name+'|'+c.lat.toFixed(2); if(RFS.lga[k]!==undefined) return Promise.resolve(RFS.lga[k]);
+    return fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(c.name)+'&count=10&language=en&country_code=AU')
+      .then(function(r){return r.json();}).then(function(d){
+        var best=null,bd=1e9; (d.results||[]).forEach(function(x){ if(x.admin1&&!/new south wales/i.test(x.admin1)) return; var dd=km(c.lat,c.lon,x.latitude,x.longitude); if(dd<bd){bd=dd;best=x;} });
+        var v=best&&bd<40?(best.admin2||''):''; RFS.lga[k]=v; return v;
+      }).catch(function(){ RFS.lga[k]=''; return ''; });
+  }
+  function districtFor(lga){
+    if(!RFS.data||!lga) return null; var n=normC(lga);
+    var ds=RFS.data.districts||[];
+    for(var i=0;i<ds.length;i++){ var cs=String(gk(ds[i],/council/i)).split(/[;,]/).map(normC);
+      if(cs.some(function(x){ return x&&(x===n||x.indexOf(n)===0||n.indexOf(x)===0); })) return ds[i]; }
+    return null;
+  }
+  function rfsPick(){ try{ return localStorage.getItem('ozskies-rfs-district')||''; }catch(e){ return ''; } }
+  function renderRFS(c,lga){
+    var d=RFS.data, h='';
+    if(!d||(!(d.districts||[]).length&&!(d.incidents||[]).length)){
+      h='<p class="near-note">Official RFS data isn’t connected yet. Once the automatic updater is switched on, today’s Fire Danger Rating, Total Fire Bans and nearby incidents will appear here.</p>';
+    } else {
+      var pick=rfsPick(), dist=null, ds=d.districts||[], matched=false;
+      if(pick) dist=ds.filter(function(x){return gk(x,/^name$/i)===pick;})[0]||null;
+      if(!dist){ dist=districtFor(lga); matched=!!dist; }
+      if(ds.length){
+        h+='<div class="rfs-dist"><label>Fire area <select id="rfs-sel"><option value="">'+(matched?'Auto: '+esc(gk(dist,/^name$/i)):'Choose your area')+'</option>'
+          +ds.map(function(x){ var nm=gk(x,/^name$/i); return '<option'+(pick===nm?' selected':'')+' value="'+esc(nm)+'">'+esc(nm)+'</option>'; }).join('')+'</select></label>'
+          +(dist?'<small>Councils: '+esc(gk(dist,/council/i))+'</small>':'<small>We couldn’t match '+esc(c.name)+' to an RFS fire area automatically. Pick yours above.</small>')+'</div>';
+      }
+      if(dist){
+        var td=fdrOf(gk(dist,/danger.*today|today.*danger|rating.*today/i)), tm=fdrOf(gk(dist,/danger.*tomorrow|tomorrow.*danger|rating.*tomorrow/i));
+        var bt=/yes|true/i.test(gk(dist,/ban.*today|today.*ban/i)), bm=/yes|true/i.test(gk(dist,/ban.*tomorrow|tomorrow.*ban/i));
+        h+='<div class="fdr-row">'
+          +'<div class="fdr '+td[1]+'"><span class="fdr-when">Today</span><b>'+esc(td[0])+'</b><small>'+esc(td[2])+'</small>'+(bt?'<span class="toban">TOTAL FIRE BAN</span>':'<span class="noban">No total fire ban</span>')+'</div>'
+          +'<div class="fdr '+tm[1]+'"><span class="fdr-when">Tomorrow</span><b>'+esc(tm[0])+'</b><small>'+esc(tm[2])+'</small>'+(bm?'<span class="toban">TOTAL FIRE BAN</span>':'<span class="noban">No total fire ban</span>')+'</div>'
+          +'</div>';
+        if(bt||bm) h+='<p class="toban-note"><b>During a Total Fire Ban</b> you can’t light, maintain or use a fire in the open, including wood or charcoal barbecues. <a href="https://www.rfs.nsw.gov.au/fire-information/fdr-and-tobans/total-fire-ban-rules" target="_blank" rel="noopener">Total Fire Ban rules ↗</a></p>';
+      }
+      var inc=(d.incidents||[]).map(function(x){ return {x:x,d:km(c.lat,c.lon,x.lat,x.lon)}; }).filter(function(o){return o.d<=100;}).sort(function(a,b){ var la=/emergency/i.test(a.x.category)?0:/watch/i.test(a.x.category)?1:2, lb=/emergency/i.test(b.x.category)?0:/watch/i.test(b.x.category)?1:2; return la-lb||a.d-b.d; }).slice(0,8);
+      h+='<div class="al-h">Fires and incidents within 100 km</div>';
+      if(inc.length){
+        inc.forEach(function(o){ var x=o.x, lv=/emergency/i.test(x.category)?3:/watch/i.test(x.category)?2:1;
+          h+='<a class="al-item sev'+lv+'" href="'+esc(x.link||'https://www.rfs.nsw.gov.au/fire-information/fires-near-me')+'" target="_blank" rel="noopener"><span class="al-ic">🔥</span><span><b>'+esc(x.title)+'</b><small><span class="lvl lvl'+lv+'">'+esc(x.category||'Advice')+'</span> '+Math.round(o.d)+' km away'
+            +(x.status?' · '+esc(x.status):'')+(x.type?' · '+esc(x.type):'')+(x.size?' · '+esc(x.size):'')+'</small></span></a>'; });
+      } else h+='<div class="al-item sev0"><span class="al-ic">✅</span><span><b>No RFS incidents listed within 100 km</b><small>Check Fires Near Me for the full map, including smaller fires.</small></span></div>';
+      var when=d.checked?new Date(d.checked):null;
+      h+='<p class="near-note">'+(when?'RFS data checked '+when.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})+' '+when.toLocaleDateString('en-AU',{weekday:'short'})+'. ':'')+'© State of New South Wales (NSW Rural Fire Service). For current information go to www.rfs.nsw.gov.au.</p>';
+    }
+    h+='<div class="off"><a href="https://www.rfs.nsw.gov.au/fire-information/fires-near-me" target="_blank" rel="noopener">Fires Near Me ↗</a><a href="https://www.rfs.nsw.gov.au/fire-information/fdr-and-tobans" target="_blank" rel="noopener">Fire Danger Ratings ↗</a><a href="https://www.rfs.nsw.gov.au/news-and-media/stay-up-to-date" target="_blank" rel="noopener">Hazards Near Me app ↗</a></div>';
+    RFS.html=h; RFS.key=alertKey(c);
+    var el=document.getElementById('rfs-body'); if(el&&current&&alertKey(current)===RFS.key){ el.innerHTML=h;
+      var sel=document.getElementById('rfs-sel'); if(sel) sel.onchange=function(){ try{ if(sel.value) localStorage.setItem('ozskies-rfs-district',sel.value); else localStorage.removeItem('ozskies-rfs-district'); }catch(e){} renderRFS(c,lga); }; }
+    if(window.updateJump) window.updateJump();
+  }
+  function loadRFS(c){
+    if(stateOf(c)!=='NSW'||!window.fetch||c.lat==null) return;
+    if(RFS.html&&RFS.key===alertKey(c)){ var sel=document.getElementById('rfs-sel'); if(sel) sel.onchange=function(){ try{ if(sel.value) localStorage.setItem('ozskies-rfs-district',sel.value); else localStorage.removeItem('ozskies-rfs-district'); }catch(e){} lgaFor(c).then(function(l){ renderRFS(c,l); }); }; if(Date.now()-RFS.at<15*60000) return; }
+    Promise.all([fetchRFS(),lgaFor(c)]).then(function(r){ if(current&&alertKey(current)===alertKey(c)) renderRFS(c,r[1]); });
   }
 
   function renderNav(){
@@ -728,6 +834,7 @@ body{background:transparent}
       +(c.consensus?'<div class="agree">'+esc(c.consensus)+'</div>':'')
       +'</section>';
     (c.warnings||[]).forEach(function(w){ h+='<div class="alert" role="alert"><strong>'+esc(w.title||'Weather warning')+'</strong>'+(w.detail?'<p>'+esc(w.detail)+'</p>':'')+'</div>'; });
+    h+='<div class="section" id="sec-rfs"'+(stateOf(c)==='NSW'?'':' hidden')+'><h2><span class="rfs-logo">RFS</span> NSW Rural Fire Service</h2><div id="rfs-body">'+(RFS.html&&RFS.key===alertKey(c)?RFS.html:'<p class="near-note">Loading official fire information…</p>')+'</div></div>';
     h+='<div class="section" id="sec-alerts"><h2>Alerts and warnings</h2><div id="alerts-body">'+(ALERTS.html&&ALERTS.key===alertKey(c)?ALERTS.html:'<p class="near-note">Checking for severe weather…</p>')+'</div></div>';
     if(c.summary) h+='<p class="section" style="margin-bottom:0">'+esc(c.summary)+'</p>';
     var days=c.days||[];
@@ -756,6 +863,7 @@ body{background:transparent}
     main.innerHTML=h;
     setWx(wxFor(c));
     loadAlerts(c);
+    loadRFS(c);
     fillHeroTides();
     wireRequests();
     wireRadars();
