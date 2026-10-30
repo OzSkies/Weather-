@@ -3,9 +3,9 @@ push new ones to that place's ntfy channel (https://ntfy.sh/ozskies-nn212-<place
 import json, math, os, re, urllib.request, urllib.parse
 from datetime import datetime, timezone, timedelta
 
-SITE = "https://nuggetnut212.github.io/Weather-/"
+SITE = "https://ozskies.github.io/Weather-/"
 PREFIX = "ozskies-nn212-"
-UA = {"User-Agent": "OzSkies alerts (github.com/NuggetNut212/Weather-)"}
+UA = {"User-Agent": "OzSkies alerts (github.com/OzSkies/Weather-)"}
 now = datetime.now(timezone.utc)
 
 def get_json(url):
