@@ -860,7 +860,7 @@ body{background:transparent}
 
   // ---------- NSW RFS ----------
   var RFS={key:'',html:'',data:null,at:0,lga:{},loading:false,src:'',view:'near',lastLga:''};
-  var RFS_RAW='https://raw.githubusercontent.com/NuggetNut212/Weather-/main/data/rfs.json';
+  var RFS_RAW='https://raw.githubusercontent.com/OzSkies/Weather-/main/data/rfs.json';
   var FDR={
     'NO RATING':['No rating','fdr-none','No fire danger rating is issued. Stay up to date.'],
     'NONE':['No rating','fdr-none','No fire danger rating is issued. Stay up to date.'],
@@ -1029,7 +1029,7 @@ body{background:transparent}
   function fetchFires(){
     if(FIRES.loading||(FIRES.data&&Date.now()-FIRES.at<15*60000)) return Promise.resolve(FIRES.data);
     FIRES.loading=true;
-    return fetch('https://raw.githubusercontent.com/NuggetNut212/Weather-/main/data/fires.json?t='+Math.floor(Date.now()/300000),{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    return fetch('https://raw.githubusercontent.com/OzSkies/Weather-/main/data/fires.json?t='+Math.floor(Date.now()/300000),{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
       .then(function(j){ FIRES.data=j; FIRES.at=Date.now(); FIRES.loading=false; return j; }).catch(function(){ FIRES.loading=false; return null; });
   }
   function drawHot(){
@@ -1602,7 +1602,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261029230240';
+  var APPVER='20261030022853';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
