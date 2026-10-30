@@ -3,7 +3,7 @@ satellite hotspots, and save them to data/fires.json for OzSkies."""
 import json, re, os, sys, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
 
-UA = {"User-Agent": "Mozilla/5.0 (OzSkies weather site; github.com/NuggetNut212/Weather-)", "Accept": "*/*"}
+UA = {"User-Agent": "Mozilla/5.0 (OzSkies weather site; github.com/OzSkies/Weather-)", "Accept": "*/*"}
 
 def get(url, timeout=60):
     with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
