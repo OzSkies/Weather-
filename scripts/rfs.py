@@ -3,7 +3,7 @@ and save a slim copy to data/rfs.json for the OzSkies site to read."""
 import json, re, os, sys, urllib.request, xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 
-UA = {"User-Agent": "OzSkies weather site (github.com/NuggetNut212/Weather-)"}
+UA = {"User-Agent": "OzSkies weather site (github.com/OzSkies/Weather-)"}
 OUT = "data/rfs.json"
 
 def get(url):
