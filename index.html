@@ -301,6 +301,31 @@ h1,h2,.num{font-family:"Bricolage Grotesque","Avenir Next",system-ui,sans-serif}
 #ag-install{margin-top:12px}
 .tb-r{flex-wrap:wrap;justify-content:flex-end}
 @media (max-width:520px){.topbar .share-btn span{display:none}.topbar .share-btn{padding:8px 11px}}
+#sec-uv{scroll-margin-top:64px}
+.uv-low{background:#3EA72D;color:#fff}.uv-mod{background:#F2C200;color:#2a2200}.uv-high{background:#F28500;color:#2a1500}.uv-vhigh{background:#D8261C;color:#fff}.uv-ext{background:#7B2AA8;color:#fff}
+.uv-low-f{fill:#3EA72D}.uv-mod-f{fill:#F2C200}.uv-high-f{fill:#F28500}.uv-vhigh-f{fill:#D8261C}.uv-ext-f{fill:#7B2AA8}
+.uv-top{display:flex;gap:14px;align-items:stretch;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:14px}
+.uv-now{border-radius:16px;min-width:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px}
+.uv-now span{font-size:12px;font-weight:700;text-transform:uppercase;opacity:.85}
+.uv-now b{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-size:48px;line-height:1;font-weight:800}
+.uv-now small{font-size:13px;font-weight:700}
+.uv-info{display:flex;flex-direction:column;gap:6px;font-size:15px}
+.uv-info p{margin:0;color:var(--muted);font-size:14px}
+.uv-sub{font-size:13px;font-weight:700;color:var(--muted);margin:14px 2px 6px;text-transform:uppercase;letter-spacing:.03em}
+.uv-sub small{text-transform:none;font-weight:400;letter-spacing:0}
+.uv-chart{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.uv-chart .uvv{font-size:12px;font-weight:700;fill:var(--ink)}
+.uv-chart .uvt{font-size:12px;fill:var(--muted)}
+.uv-days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.uv-day{border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center}
+.uv-day span{font-size:12px;font-weight:700}
+.uv-day b{font-size:22px;line-height:1.1}
+.uv-day small{font-size:10px;text-align:center}
+.uv-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:6px}
+.uv-badge{min-width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px}
+.uv-rn{flex:1}.uv-rn small{display:block;color:var(--muted);font-size:13px}
+.uv-row button{border:0;background:none;color:var(--muted);font:inherit;cursor:pointer}
+@media (max-width:480px){.uv-top{flex-direction:column}.uv-days{grid-template-columns:repeat(4,1fr)}}
 #ocean-map{height:420px;border-radius:20px;border:1px solid var(--line);overflow:hidden;background:#b9d3e6;position:relative}
 .oflow{position:absolute;inset:0;z-index:450;pointer-events:none}
 .obadge{position:absolute;left:10px;top:10px;z-index:460;background:rgba(15,30,45,.78);color:#fff;font-weight:700;font-size:14px;padding:6px 12px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
@@ -465,6 +490,7 @@ body{background:transparent}
     <button type="button" data-t="radar-live">Live radar</button>
     <button type="button" data-t="sec-alerts">Alerts</button>
     <button type="button" data-t="sec-week">7-day forecast</button>
+    <button type="button" data-t="sec-uv">UV</button>
     <button type="button" data-t="sec-radars">Radar stations</button>
     <button type="button" data-t="surf">Surf</button>
     <button type="button" data-t="ocean-wrap">Ocean map</button>
@@ -1071,6 +1097,82 @@ body{background:transparent}
     Array.prototype.forEach.call(document.querySelectorAll('.tr-zoom button'),function(b){ b.onclick=function(){ var v=+b.getAttribute('data-s'); setS(v); try{ localStorage.setItem('ozskies-trs',v); }catch(e){} }; });
   })();
 
+  // ---------- UV index ----------
+  var UV={key:'',html:'',cache:{},mine:null};
+  function uvKey(c){ return c&&c.lat!=null?(+c.lat).toFixed(2)+','+(+c.lon).toFixed(2):''; }
+  function uvCat(u){ u=u||0; return u<3?['Low','uv-low']:u<6?['Moderate','uv-mod']:u<8?['High','uv-high']:u<11?['Very high','uv-vhigh']:['Extreme','uv-ext']; }
+  function uvAdvice(u){ return u<3?'Low risk. You can safely be outside, though sunglasses help on bright days.':u<6?'Slip on clothing, slop on SPF50+ sunscreen, slap on a hat, seek shade and slide on sunglasses during the middle of the day.':u<8?'Protection is essential. Use all five: slip, slop, slap, seek and slide. Reapply sunscreen every 2 hours.':u<11?'Unprotected skin can burn in about 15 minutes. Avoid the midday sun and use full sun protection.':'Skin can burn in minutes. Stay in the shade between about 10 am and 3 pm and use full protection.'; }
+  function uvWindow(times,uv,dayStart,dayEnd){
+    var a=null,b=null;
+    for(var i=1;i<times.length;i++){ var t0=times[i-1],t1=times[i]; if(t1<dayStart||t0>dayEnd) continue; var u0=uv[i-1]||0,u1=uv[i]||0;
+      if(a==null&&u0<3&&u1>=3) a=t0+(3-u0)/(u1-u0)*(t1-t0); if(a==null&&u0>=3&&t0>=dayStart) a=t0;
+      if(a!=null&&u0>=3&&u1<3) b=t0+(u0-3)/(u0-u1)*(t1-t0); }
+    return a!=null&&b!=null&&b>a?[a,b]:null;
+  }
+  function tmS(u){ return new Date(u*1000).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'}); }
+  function uvSummary(d){
+    var h=d.hourly, now=Date.now()/1000, off=d.utc_offset_seconds||0, loc=new Date((now+off)*1000), dayStart=Date.UTC(loc.getUTCFullYear(),loc.getUTCMonth(),loc.getUTCDate())/1000-off, dayEnd=dayStart+86400;
+    var cur=null,peak=0,peakT=null,hours=[];
+    for(var i=0;i<h.time.length;i++){ var t=h.time[i]; if(t<dayStart||t>=dayEnd) continue; var u=h.uv_index[i]||0;
+      if(t<=now&&now<t+3600) cur=u; if(u>peak){peak=u;peakT=t;} hours.push([t,u]); }
+    return {cur:cur,peak:peak,peakT:peakT,hours:hours,win:uvWindow(h.time,h.uv_index,dayStart,dayEnd),days:d.daily};
+  }
+  function uvChart(sm){
+    var hs=sm.hours.filter(function(x){ var hr=new Date(x[0]*1000).getHours(); return hr>=5&&hr<=20; }); if(hs.length<4) return '';
+    var W=640,H=150,pl=6,bw=(W-2*pl)/hs.length,mx=Math.max(11,sm.peak), now=Date.now()/1000, g='';
+    hs.forEach(function(x,k){ var bh=Math.max(2,(x[1]/mx)*100), X=pl+k*bw, c=uvCat(x[1])[1];
+      g+='<rect x="'+(X+bw*.12).toFixed(1)+'" y="'+(118-bh).toFixed(1)+'" width="'+(bw*.76).toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="3" class="'+c+'-f"'+(x[0]<=now&&now<x[0]+3600?' stroke="var(--ink)" stroke-width="2"':'')+'/>';
+      if(x[1]>=1) g+='<text x="'+(X+bw/2).toFixed(1)+'" y="'+(113-bh).toFixed(1)+'" text-anchor="middle" class="uvv">'+Math.round(x[1])+'</text>';
+      var hr=new Date(x[0]*1000).getHours(); if(hr%3===0) g+='<text x="'+(X+bw/2).toFixed(1)+'" y="138" text-anchor="middle" class="uvt">'+(hr===12?'12pm':hr>12?(hr-12)+'pm':hr+'am')+'</text>'; });
+    return '<svg class="uv-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="UV index by hour today"><line x1="0" x2="'+W+'" y1="'+(118-3/mx*100).toFixed(1)+'" y2="'+(118-3/mx*100).toFixed(1)+'" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1"/>'+g+'</svg>';
+  }
+  function renderUV(c,d){
+    var sm=uvSummary(d), cc=uvCat(sm.cur), pc=uvCat(sm.peak), h='', hrNow=new Date().getHours();
+    h+='<div class="uv-top"><div class="uv-now '+cc[1]+'"><span>Now</span><b>'+(sm.cur!=null?Math.round(sm.cur):'–')+'</b><small>'+cc[0]+'</small></div>'
+      +'<div class="uv-info"><div><b>Today’s peak: '+Math.round(sm.peak)+' ('+pc[0]+')</b>'+(sm.peakT?' around '+tmS(sm.peakT):'')+'</div>'
+      +'<div class="uv-win">'+(sm.win?'☀️ <b>Sun protection recommended '+tmS(sm.win[0])+' – '+tmS(sm.win[1])+'</b>':'✅ <b>No sun protection needed today</b> (UV stays below 3)')+'</div>'
+      +'<p>'+esc(uvAdvice(hrNow>=7&&hrNow<=18&&sm.cur!=null?sm.cur:sm.peak))+'</p></div></div>';
+    h+='<div class="uv-sub">Today, hour by hour <small>· dashed line is UV 3, when protection is needed</small></div>'+uvChart(sm);
+    if(sm.days&&sm.days.time){ h+='<div class="uv-sub">Next 7 days</div><div class="uv-days">';
+      sm.days.time.forEach(function(t,i){ var u=sm.days.uv_index_max[i]; if(u==null) return; var k=uvCat(u); h+='<div class="uv-day '+k[1]+'"><span>'+(i===0?'Today':new Date(t*1000+43200000).toLocaleDateString('en-AU',{weekday:'short'}))+'</span><b>'+Math.round(u)+'</b><small>'+k[0]+'</small></div>'; });
+      h+='</div>'; }
+    h+='<p class="near-note">UV forecast from Open-Meteo weather models, allowing for expected cloud. Real UV can be higher near water, sand or snow, and at altitude.</p>';
+    UV.html=h; UV.key=uvKey(c);
+    var t=document.getElementById('uv-title'); if(t) t.textContent='UV index at '+c.name;
+    var el=document.getElementById('uv-body'); if(el) el.innerHTML=h;
+    if(window.updateJump) window.updateJump();
+  }
+  function uvFetch(list){
+    return fetch('https://api.open-meteo.com/v1/forecast?latitude='+list.map(function(p){return p.lat;}).join(',')+'&longitude='+list.map(function(p){return p.lon;}).join(',')+'&hourly=uv_index&daily=uv_index_max&timezone=auto&timeformat=unixtime&forecast_days=7')
+      .then(function(r){return r.json();}).then(function(d){ return Array.isArray(d)?d:[d]; });
+  }
+  function loadUV(c){
+    if(!window.fetch||!c||c.lat==null) return; var k=uvKey(c), hit=UV.cache[k];
+    var t=document.getElementById('uv-title'); if(t) t.textContent='UV index at '+c.name;
+    if(hit&&Date.now()-hit.at<30*60000) renderUV(c,hit.d);
+    else uvFetch([c]).then(function(a){ if(a[0]&&a[0].hourly){ UV.cache[k]={at:Date.now(),d:a[0]}; if(current&&uvKey(nearNote?{lat:nearNote.lat,lon:nearNote.lon}:current)===k) renderUV(c,a[0]); } }).catch(function(){ var el=document.getElementById('uv-body'); if(el) el.innerHTML='<p class="near-note">UV forecast unavailable right now.</p>'; });
+    renderUVMine();
+  }
+  function uvMineGet(){ try{ return JSON.parse(localStorage.getItem('ozskies-uv')||'[]'); }catch(e){ return []; } }
+  function uvMineSave(a){ try{ localStorage.setItem('ozskies-uv',JSON.stringify(a)); }catch(e){} }
+  function renderUVMine(){
+    var box=document.getElementById('uv-mine'); if(!box) return; var list=uvMineGet();
+    box.innerHTML='<div class="uv-sub">My UV places</div><div id="uv-mine-rows">'+(list.length?'<p class="near-note">Loading…</p>':'<p class="near-note">Add places to compare UV at a glance, like home, work or your favourite beach.</p>')+'</div>'
+      +'<div class="search ns-search"><input type="search" id="uv-q" placeholder="Add a place to My UV places" autocomplete="off" aria-label="Add a place to My UV places"></div><div class="results" id="uv-r" hidden></div>';
+    nsSearchBox(document.getElementById('uv-q'),document.getElementById('uv-r'),function(tw){ var a=uvMineGet(); if(a.length>=8) a.shift(); if(!a.some(function(p){return p.name===tw[0]&&p.state===tw[1];})) a.push({name:tw[0],state:tw[1],lat:tw[2],lon:tw[3]}); uvMineSave(a); UV.mine=null; renderUVMine(); });
+    if(!list.length) return;
+    var go=function(arr){
+      var rows=document.getElementById('uv-mine-rows'); if(!rows) return; rows.innerHTML='';
+      list.forEach(function(p,i){ var d=arr[i]; if(!d||!d.hourly) return; var sm=uvSummary(d), k=uvCat(sm.cur), pk=uvCat(sm.peak);
+        var r=document.createElement('div'); r.className='uv-row';
+        r.innerHTML='<span class="uv-badge '+k[1]+'">'+(sm.cur!=null?Math.round(sm.cur):'–')+'</span><span class="uv-rn"><b>'+esc(p.name)+'</b><small>Peak '+Math.round(sm.peak)+' ('+pk[0]+')'+(sm.win?' · protect '+tmS(sm.win[0])+'–'+tmS(sm.win[1]):' · no protection needed')+'</small></span><button type="button" aria-label="Remove '+esc(p.name)+'">✕</button>';
+        r.querySelector('button').onclick=function(){ var a=uvMineGet(); a.splice(i,1); uvMineSave(a); UV.mine=null; renderUVMine(); };
+        rows.appendChild(r); });
+    };
+    if(UV.mine&&Date.now()-UV.mine.at<30*60000&&UV.mine.n===list.length){ go(UV.mine.d); return; }
+    uvFetch(list).then(function(a){ UV.mine={at:Date.now(),d:a,n:list.length}; go(a); }).catch(function(){});
+  }
+
   function renderNav(){
     nav.innerHTML='';
     cities.forEach(function(c){
@@ -1137,6 +1239,7 @@ body{background:transparent}
       h+='</div>'+(confOf(c)?'<div class="legend"><span><i class="cf cf-high"></i>High confidence</span><span><i class="cf cf-med"></i>Medium</span><span><i class="cf cf-low"></i>Low</span><span class="lg-why">Based on how closely 4 weather models agree and how far ahead the day is.</span></div>':'')+'</div>';
     }
     if(nearNote){ radarCenter(nearNote.lat,nearNote.lon); loadSurf(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); camsFor(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); trafficFor(nearNote.lat,nearNote.lon,nearNote.town.split(',')[0]); } else { radarCenter(c.lat,c.lon); loadSurf(c.lat,c.lon,c.name); camsFor(c.lat,c.lon,c.name); trafficFor(c.lat,c.lon,c.name); }
+    h+='<div class="section" id="sec-uv"><h2 id="uv-title">UV index</h2><div id="uv-body">'+(UV.html&&UV.key===uvKey(nearNote?{lat:nearNote.lat,lon:nearNote.lon}:c)?UV.html:'<p class="near-note">Loading UV…</p>')+'</div><div id="uv-mine"></div></div>';
     h+= nearNote ? radarHTML(nearNote.lat,nearNote.lon,nearNote.town) : radarHTML(c.lat,c.lon,c.name);
     var a=ago(c.updatedAt), old=Date.now()-Date.parse(c.updatedAt)>6*3600000;
     h+='<p class="meta">'+(a?(old?'<span class="stale">Updated '+a+'.</span> Forecasts may be out of date.':'Updated '+a+'.'):'')+(c.source?' Combined from: '+esc(c.source)+'.':'')+'</p>';
@@ -1145,6 +1248,7 @@ body{background:transparent}
     (function(){ var rs=document.getElementById('radar-slot'), rl=RLEL; if(rs&&rl){ rs.appendChild(rl); if(RV.map) setTimeout(function(){ RV.map.invalidateSize(); },50); } })();
     setWx(wxFor(c));
     loadAlerts(c);
+    loadUV(nearNote?{name:nearNote.town.split(',')[0],lat:nearNote.lat,lon:nearNote.lon}:c);
     loadRFS(c);
     fillHeroTides();
     wireRequests();
@@ -1602,7 +1706,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261030022853';
+  var APPVER='20261101225411';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
