@@ -1268,8 +1268,10 @@ body{background:transparent}
     });
   }
 
+  function rememberPlace(id){ try{ if(id) localStorage.setItem('ozskies-last',id); }catch(e){} }
   function select(id){
     current=cities.find(function(c){return c.id===id;})||cities[0];
+    if(id) rememberPlace(current.id);
     var stale=current.days&&current.updatedAt&&(Date.now()-Date.parse(current.updatedAt)>3*3600000);
     if(current.pinLive||stale){ var pin=current, nr=nearest(pin.lat,pin.lon);
       openTown([pin.name,ABBR[pin.region],pin.lat,pin.lon],function(){ if(pin.days){ current=pin; renderNav(); renderCity(pin); return; } nearNote={town:pin.name+', '+ABBR[pin.region],km:nr.km,lat:pin.lat,lon:pin.lon,key:pin.id}; current=nr.city; renderNav(); renderCity(nr.city); },pin.id);
@@ -1652,7 +1654,7 @@ body{background:transparent}
   }
   function openTown(tw,fallback,pinId){
     var k=tw[0]+'|'+tw[1], hit=LIVE.cache[k];
-    function show(c){ nearNote=null; current=c; renderNav(); renderCity(c); if(location.hash!=='#'+c.id) history.replaceState(null,'','#'+c.id); window.scrollTo(0,0); }
+    function show(c){ nearNote=null; current=c; rememberPlace(c.id); renderNav(); renderCity(c); if(location.hash!=='#'+c.id) history.replaceState(null,'','#'+c.id); window.scrollTo(0,0); }
     if(hit && Date.now()-hit.at<60*60000){ show(hit.c); return; }
     if(!window.fetch){ fallback(); return; }
     if(RLEL&&main.contains(RLEL)) document.getElementById('radar-hold').appendChild(RLEL);
@@ -1706,7 +1708,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261101225411';
+  var APPVER='20261102002813';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
@@ -1822,7 +1824,7 @@ body{background:transparent}
   })();
 
   document.getElementById('count').textContent = TOWNS.length.toLocaleString('en-AU');
-  (function(){ var h=location.hash.slice(1);
+  (function(){ var h=location.hash.slice(1); if(!h){ try{ h=localStorage.getItem('ozskies-last')||''; }catch(e){} }
     if(h.indexOf('t-')===0){ var tw=TOWNS.filter(function(t){return 't-'+slug(t[0]+' '+t[1])===h;})[0];
       if(tw){ select(''); openTown(tw,function(){}); return; } }
     select(h); })();
