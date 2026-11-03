@@ -1201,13 +1201,18 @@ body{background:transparent}
         + (nearNote.km>150?'<p class="near-note">That’s a long way, so conditions may differ a lot.</p>':'')
         + requestButton(nearNote.town, nearNote.key)+'</div>';
     }
-    if(c.live) h+='<div class="live-note">Live forecast for <b>'+esc(c.name)+'</b>, '+esc(c.region)+'. Updates automatically every hour.</div>';
+    if(c.live) h+='<div class="live-note">Live forecast for <b>'+esc(c.name)+'</b>, '+esc(c.region)+'. Updates automatically every 20 minutes.</div>';
     h+='<section class="hero" id="sec-today" data-sky="'+sky(today.icon)+'">'
       +'<h1 class="place">'+esc(c.name)+'</h1><div class="region">'+esc(c.region||'')+'</div>'
-      +'<div class="label">Today’s forecast high</div>'
-      +'<div class="now"><div class="temp num">'+n(today.high)+'<sup>'+u+'</sup></div><div class="big-icon">'+icon(today.icon)+'</div></div>'
-      +'<div class="cond">'+esc(today.condition||'')+'</div>'
-      +'<div class="hilo">Overnight low '+n(today.low)+u+(cur.feels!=null?'  ·  Feels like up to '+n(cur.feels)+u:'')+'</div>'
+      +(cur.temp!=null
+        ?'<div class="label">Right now</div>'
+          +'<div class="now"><div class="temp num">'+n(cur.temp)+'<sup>'+u+'</sup></div><div class="big-icon">'+icon(today.icon)+'</div></div>'
+          +'<div class="cond">'+esc(today.condition||'')+'</div>'
+          +'<div class="hilo">Today: high '+n(today.high)+u+' · low '+n(today.low)+u+(cur.feelsNow!=null?'  ·  Feels like '+n(cur.feelsNow)+u:'')+'</div>'
+        :'<div class="label">Today’s forecast high</div>'
+          +'<div class="now"><div class="temp num">'+n(today.high)+'<sup>'+u+'</sup></div><div class="big-icon">'+icon(today.icon)+'</div></div>'
+          +'<div class="cond">'+esc(today.condition||'')+'</div>'
+          +'<div class="hilo">Overnight low '+n(today.low)+u+(cur.feels!=null?'  ·  Feels like up to '+n(cur.feels)+u:'')+'</div>')
       +heroConf(c)
       +'<div class="facts"><div class="fact"><b>'+n(today.rain)+'%</b><span>Chance of rain</span></div>'
       +'<div class="fact"><b>'+esc(cur.wind||'–')+'</b><span>Wind</span></div>'
@@ -1668,7 +1673,7 @@ body{background:transparent}
       +(wet&&wet.rain>=40?' Rain is most likely on '+(wet.day==='Today'?'today':wet.day)+' ('+Math.round(wet.rain)+'%).':' Mostly dry over the coming days.')
       +(uv>=11?' Extreme UV is forecast in the next few days.':'');
     return {id:'t-'+slug(tw[0]+' '+tw[1]),name:tw[0],region:FULL[tw[1]]||tw[1],lat:tw[2],lon:tw[3],live:true,units:'C',updatedAt:new Date().toISOString(),
-      current:{code:cu.weather_code,humidity:cu.relative_humidity_2m,wind:cu.wind_speed_10m!=null?dir(cu.wind_direction_10m)+' '+Math.round(cu.wind_speed_10m)+' km/h':null,feels:cu.apparent_temperature},
+      current:{code:cu.weather_code,temp:cu.temperature_2m,feelsNow:cu.apparent_temperature,humidity:cu.relative_humidity_2m,wind:cu.wind_speed_10m!=null?dir(cu.wind_direction_10m)+' '+Math.round(cu.wind_speed_10m)+' km/h':null,feels:cu.apparent_temperature},
       consensus:'Live computer-model forecast for this exact spot, refreshed every hour. It blends the Bureau of Meteorology’s ACCESS model with other global models. It isn’t checked by a forecaster, so it can differ a little from official Bureau forecasts.',
       source:'Open-Meteo (Bureau of Meteorology ACCESS and other models)',extra:parseExtra(dl),summary:summary,warnings:[],days:days,
       today:{high:t.high,low:t.low,rain:t.rain,condition:t.condition,icon:t.icon}};
@@ -1676,13 +1681,13 @@ body{background:transparent}
   function openTown(tw,fallback,pinId){
     var k=tw[0]+'|'+tw[1], hit=LIVE.cache[k];
     function show(c){ nearNote=null; current=c; rememberPlace(c.id); renderNav(); renderCity(c); if(location.hash!=='#'+c.id) history.replaceState(null,'','#'+c.id); window.scrollTo(0,0); }
-    if(hit && Date.now()-hit.at<60*60000){ show(hit.c); return; }
+    if(hit && Date.now()-hit.at<20*60000){ show(hit.c); return; }
     if(!window.fetch){ fallback(); return; }
     if(RLEL&&main.contains(RLEL)) document.getElementById('radar-hold').appendChild(RLEL);
     main.innerHTML='<div class="empty"><h1>Loading '+esc(tw[0])+'…</h1><p>Getting the live forecast for this exact spot.</p></div>';
     var url='https://api.open-meteo.com/v1/forecast?latitude='+tw[2]+'&longitude='+tw[3]
       +'&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m'
-      +'&hourly=weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,'+DAILYX+'&timeformat=unixtime'
+      +'&cell_selection=nearest&hourly=weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,'+DAILYX+'&timeformat=unixtime'
       +'&timezone=auto&forecast_days=7';
     fetch(url).then(function(r){return r.json();}).then(function(d){
       if(!d||!d.daily||!d.daily.time){ fallback(); return; }
@@ -1690,7 +1695,7 @@ body{background:transparent}
     }).catch(function(){ fallback(); });
   }
   setInterval(function(){ if(current&&current.live){ var tw=[current.name,null,current.lat,current.lon];
-    for(var k in LIVE.cache){ if(LIVE.cache[k].c===current){ var p=k.split('|'); tw[1]=p[1]; var pid=current.id; delete LIVE.cache[k]; openTown(tw,function(){},pid.indexOf('t-')===0?null:pid); break; } } } }, 60*60000);
+    for(var k in LIVE.cache){ if(LIVE.cache[k].c===current){ var p=k.split('|'); tw[1]=p[1]; var pid=current.id; delete LIVE.cache[k]; openTown(tw,function(){},pid.indexOf('t-')===0?null:pid); break; } } } }, 20*60000);
 
 
 
@@ -1729,7 +1734,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261103222433';
+  var APPVER='20261103222539';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
