@@ -1633,6 +1633,25 @@ body{background:transparent}
     if(c>=95) return ['Thunderstorms','storm']; return ['Cloudy','cloud'];
   }
   function slug(t){ return norm(t).replace(/ /g,'-'); }
+
+  function restOfToday(d){
+    var h=d.hourly; if(!h||!h.time||!h.weather_code) return null;
+    var now=Date.now()/1000, off=d.utc_offset_seconds||0, loc=new Date((now+off)*1000);
+    var dayStart=Date.UTC(loc.getUTCFullYear(),loc.getUTCMonth(),loc.getUTCDate())/1000-off, end=dayStart+19*3600, from=Math.max(now-1800,dayStart+6*3600);
+    var codes=[]; for(var i=0;i<h.time.length;i++){ var t=h.time[i]; if(t>=from&&t<=end&&h.weather_code[i]!=null) codes.push(h.weather_code[i]); }
+    if(codes.length<2) return null;
+    var n=function(f){ return codes.filter(f).length; };
+    var storm=n(function(c){return c>=95;}), rain=n(function(c){return (c>=61&&c<=67)||(c>=80&&c<=82);}), drz=n(function(c){return c>=51&&c<=57;}), snow=n(function(c){return (c>=71&&c<=77)||c===85||c===86;}), fog=n(function(c){return c===45||c===48;});
+    if(storm>=1) return storm>=1&&codes.some(function(c){return c===96||c===99;})?['Thunderstorms with hail','hail']:['Thunderstorms possible','storm'];
+    if(snow>=2) return ['Snow','snow'];
+    if(rain>=2) return rain>=codes.length/2?['Rain','rain']:['Showers at times','rain'];
+    if(drz>=2) return ['Drizzle at times','rain'];
+    if(fog>=Math.max(3,codes.length/2)) return ['Fog','cloud'];
+    var sky=codes.filter(function(c){return c<=3;}); if(!sky.length) return null;
+    var avg=sky.reduce(function(a,b){return a+b;},0)/sky.length;
+    return avg<0.6?['Clear','sun']:avg<1.4?['Mostly sunny','sun']:avg<2.4?['Partly cloudy','partly']:['Cloudy','cloud'];
+  }
+
   function buildLive(tw,d){
     var dl=d.daily, cu=d.current||{}, days=[];
     for(var i=0;i<dl.time.length;i++){
@@ -1641,6 +1660,8 @@ body{background:transparent}
         high:dl.temperature_2m_max[i],low:dl.temperature_2m_min[i],rain:dl.precipitation_probability_max?dl.precipitation_probability_max[i]:null,
         condition:w[0]+(dl.precipitation_sum&&dl.precipitation_sum[i]>=1?', '+Math.round(dl.precipitation_sum[i])+' mm':''),icon:w[1]});
     }
+    var rt=restOfToday(d);
+    if(rt&&days[0]){ var mm0=days[0].condition.match(/, \d+ mm$/); days[0].condition=rt[0]+(mm0&&/rain|shower|drizzle|storm/i.test(rt[0])?mm0[0]:''); days[0].icon=rt[1]; }
     var t=days[0], wet=days.slice(1).reduce(function(a,b){return (b.rain||0)>(a?a.rain||0:-1)?b:a;},null);
     var uv=dl.uv_index_max?Math.max.apply(null,dl.uv_index_max.slice(0,3).map(function(v){return v||0;})):0;
     var summary=t.condition.split(',')[0]+' today with a top of '+Math.round(t.high)+'°'+(t.rain!=null?' and a '+Math.round(t.rain)+'% chance of rain':'')+'.'
@@ -1661,7 +1682,7 @@ body{background:transparent}
     main.innerHTML='<div class="empty"><h1>Loading '+esc(tw[0])+'…</h1><p>Getting the live forecast for this exact spot.</p></div>';
     var url='https://api.open-meteo.com/v1/forecast?latitude='+tw[2]+'&longitude='+tw[3]
       +'&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m'
-      +'&daily=weather_code,temperature_2m_max,temperature_2m_min,'+DAILYX+'&timeformat=unixtime'
+      +'&hourly=weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,'+DAILYX+'&timeformat=unixtime'
       +'&timezone=auto&forecast_days=7';
     fetch(url).then(function(r){return r.json();}).then(function(d){
       if(!d||!d.daily||!d.daily.time){ fallback(); return; }
@@ -1708,7 +1729,7 @@ body{background:transparent}
 
 
   // ---------- Auto-update to newest version ----------
-  var APPVER='20261102002813';
+  var APPVER='20261103222433';
   function checkVersion(){
     if(!window.fetch||location.protocol.indexOf('http')!==0) return;
     fetch(location.pathname+'?vcheck='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
